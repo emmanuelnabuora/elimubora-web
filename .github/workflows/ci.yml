@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: elimubora
+          POSTGRES_PASSWORD: elimubora_dev_password
+          POSTGRES_DB: elimubora
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U elimubora"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Architectural boundaries
+        run: npm run lint:boundaries
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Apply migrations against a real Postgres
+        env:
+          MIGRATIONS_DATABASE_URL: postgres://elimubora:elimubora_dev_password@localhost:5432/elimubora
+        run: node tools/migrate.mjs
+      - name: Migrations are idempotent
+        env:
+          MIGRATIONS_DATABASE_URL: postgres://elimubora:elimubora_dev_password@localhost:5432/elimubora
+        run: node tools/migrate.mjs
+      - name: Unit, e2e and integration tests
+        env:
+          INTEGRATION_DATABASE_URL: postgres://elimubora_app:app_dev_password@localhost:5432/elimubora
+          INTEGRATION_ADMIN_DATABASE_URL: postgres://elimubora:elimubora_dev_password@localhost:5432/elimubora
+        run: npm test
