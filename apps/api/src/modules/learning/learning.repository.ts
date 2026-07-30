@@ -534,6 +534,16 @@ export class LearningRepository {
     });
   }
 
+  async findSubmissionById(id: string): Promise<Submission | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<SubmissionRow>(
+        `SELECT * FROM learning.submissions WHERE id = $1 AND tenant_id = core.current_tenant_id()`,
+        [id]
+      );
+      return rows[0] ? toSubmission(rows[0]) : null;
+    });
+  }
+
   async listSubmissionsForAssignment(assignmentId: string): Promise<Submission[]> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<SubmissionRow>(

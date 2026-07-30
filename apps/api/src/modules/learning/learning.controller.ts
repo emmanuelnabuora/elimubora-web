@@ -165,4 +165,9 @@ export class SubmissionsController {
   ) {
     return this.learning.grade(user, id, dto);
   }
+
+  @Post(':id/feedback-draft')
+  draftFeedback(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.learning.draftFeedback(user, id);
+  }
 }

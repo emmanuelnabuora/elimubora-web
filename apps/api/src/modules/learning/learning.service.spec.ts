@@ -40,7 +40,11 @@ describe('LearningService', () => {
       upsertSubmissionForOnlineSubmit: jest.fn(async () => ({ id: 'sub-1' })),
       gradeSubmission: jest.fn(async () => ({ id: 'sub-1', score: 80 }))
     };
-    service = new LearningService(repo as unknown as LearningRepository);
+    service = new LearningService(
+      repo as unknown as LearningRepository,
+      { complete: jest.fn(async () => ({ text: 'stub' })) },
+      { record: jest.fn(async () => undefined) } as never
+    );
   });
 
   it('a learner cannot create a course', async () => {

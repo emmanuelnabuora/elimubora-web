@@ -6,15 +6,19 @@ import {
   createExamSchema,
   createQuestionBankSchema,
   createQuestionSchema,
+  draftQuestionWithAiSchema,
   gradeAttemptSchema,
   issueCertificateSchema,
+  reviewQuestionSchema,
   submitAttemptSchema,
   updateExamStatusSchema,
   type CreateExamDto,
   type CreateQuestionBankDto,
   type CreateQuestionDto,
+  type DraftQuestionWithAiDto,
   type GradeAttemptDto,
   type IssueCertificateDto,
+  type ReviewQuestionDto,
   type SubmitAttemptDto,
   type UpdateExamStatusDto
 } from './assessment.dto';
@@ -39,6 +43,24 @@ export class QuestionBanksController {
     @Body(new ZodValidationPipe(createQuestionSchema)) dto: CreateQuestionDto
   ) {
     return this.service.createQuestion(user, bankId, dto);
+  }
+
+  @Post(':id/questions/ai-draft')
+  draftQuestion(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) bankId: string,
+    @Body(new ZodValidationPipe(draftQuestionWithAiSchema)) dto: DraftQuestionWithAiDto
+  ) {
+    return this.service.draftQuestionWithAi(user, bankId, dto);
+  }
+
+  @Patch('questions/:questionId/review')
+  reviewQuestion(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('questionId', ParseUUIDPipe) questionId: string,
+    @Body(new ZodValidationPipe(reviewQuestionSchema)) dto: ReviewQuestionDto
+  ) {
+    return this.service.reviewQuestion(user, questionId, dto.status);
   }
 }
 

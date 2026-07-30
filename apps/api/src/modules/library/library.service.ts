@@ -14,7 +14,19 @@ export class LibraryService {
     if (!STAFF_ROLES.has(user.role)) {
       throw new ForbiddenException('Only staff can publish library resources');
     }
-    return this.repo.createResource({ ...dto, createdBy: user.userId });
+    // Explicit field-by-field construction rather than a spread: this
+    // removes any dependency on how a given TypeScript/zod version
+    // infers optionality across the DTO -> repository boundary.
+    return this.repo.createResource({
+      title: dto.title,
+      resourceType: dto.resourceType,
+      subject: dto.subject,
+      gradeLevel: dto.gradeLevel,
+      description: dto.description,
+      storageKey: dto.storageKey,
+      tags: dto.tags,
+      createdBy: user.userId
+    });
   }
 
   async getResource(id: string): Promise<LibraryResource> {

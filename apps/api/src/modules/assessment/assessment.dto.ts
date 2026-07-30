@@ -32,6 +32,17 @@ export const createQuestionSchema = z
   );
 export type CreateQuestionDto = z.infer<typeof createQuestionSchema>;
 
+export const draftQuestionWithAiSchema = z.object({
+  topic: z.string().min(2).max(500),
+  marks: z.number().positive().max(1000).default(10)
+});
+export type DraftQuestionWithAiDto = z.infer<typeof draftQuestionWithAiSchema>;
+
+export const reviewQuestionSchema = z.object({
+  status: z.enum(['approved', 'rejected'])
+});
+export type ReviewQuestionDto = z.infer<typeof reviewQuestionSchema>;
+
 export const createExamSchema = z.object({
   courseId: z.string().uuid(),
   questionBankId: z.string().uuid(),

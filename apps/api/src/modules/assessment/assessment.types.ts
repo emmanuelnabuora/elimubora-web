@@ -15,6 +15,8 @@ export interface QuestionBank {
   createdBy: string;
 }
 
+export type ReviewStatus = 'approved' | 'pending' | 'rejected';
+
 export interface Question {
   id: string;
   bankId: string;
@@ -25,6 +27,8 @@ export interface Question {
   correctOptionId: string | null;
   marks: string;
   competencyIds: string[];
+  aiGenerated: boolean;
+  reviewStatus: ReviewStatus;
 }
 
 /** The shape a learner is allowed to see: no answer key. */

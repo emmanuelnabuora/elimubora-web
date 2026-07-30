@@ -1,9 +1,12 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../core/auth/auth.types';
+import { AiInteractionLogService } from '../../core/ai/ai-interaction-log.service';
+import { AI_PROVIDER, type AiProvider } from '../../core/ai/ai-provider.port';
 import type {
   CreateAssignmentDto,
   CreateCourseDto,
@@ -36,7 +39,11 @@ const STAFF_ROLES = new Set(['teacher', 'school_admin', 'principal', 'platform_a
  */
 @Injectable()
 export class LearningService {
-  constructor(private readonly repo: LearningRepository) {}
+  constructor(
+    private readonly repo: LearningRepository,
+    @Inject(AI_PROVIDER) private readonly ai: AiProvider,
+    private readonly aiLog: AiInteractionLogService
+  ) {}
 
   private requireStaff(user: AuthenticatedUser): void {
     if (!STAFF_ROLES.has(user.role)) {
@@ -186,5 +193,35 @@ export class LearningService {
     const graded = await this.repo.gradeSubmission(submissionId, { ...dto, gradedBy: user.userId });
     if (!graded) throw new NotFoundException('Submission not found');
     return graded;
+  }
+
+  /**
+   * Drafts feedback text via the AI provider — returned to the
+   * teacher for review, NEVER written into submissions.feedback
+   * directly. Applying it (verbatim, edited, or ignored) still
+   * requires the teacher to explicitly call `grade`, exactly like a
+   * feedback they typed themselves. This is the AI Platform's third
+   * human-in-the-loop pattern this sprint (alongside pending-review
+   * lesson plans and exam questions): AI drafts, a person decides.
+   */
+  async draftFeedback(user: AuthenticatedUser, submissionId: string): Promise<{ draft: string }> {
+    this.requireStaff(user);
+    const submission = await this.repo.findSubmissionById(submissionId);
+    if (!submission) throw new NotFoundException('Submission not found');
+    const assignment = await this.repo.findAssignment(submission.assignmentId);
+
+    const result = await this.ai.complete({
+      feature: 'feedback_draft',
+      prompt: `Draft constructive feedback for a learner's submission to "${assignment?.title ?? 'an assignment'}". Submission content: ${JSON.stringify(submission.content).slice(0, 1000)}`,
+      context: { submissionId, assignmentId: submission.assignmentId }
+    });
+    await this.aiLog.record({
+      userId: user.userId,
+      feature: 'feedback_draft',
+      context: { submissionId },
+      promptSummary: `feedback for submission ${submissionId}`,
+      responseSummary: result.text
+    });
+    return { draft: result.text };
   }
 }

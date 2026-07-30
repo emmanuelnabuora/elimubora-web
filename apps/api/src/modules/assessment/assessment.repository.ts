@@ -38,6 +38,8 @@ interface QuestionRow {
   correct_option_id: string | null;
   marks: string;
   competency_ids: string[];
+  ai_generated: boolean;
+  review_status: Question['reviewStatus'];
 }
 const toQuestion = (r: QuestionRow): Question => ({
   id: r.id,
@@ -47,7 +49,9 @@ const toQuestion = (r: QuestionRow): Question => ({
   options: r.options,
   correctOptionId: r.correct_option_id,
   marks: r.marks,
-  competencyIds: r.competency_ids
+  competencyIds: r.competency_ids,
+  aiGenerated: r.ai_generated,
+  reviewStatus: r.review_status
 });
 
 interface ExamRow {
@@ -172,13 +176,16 @@ export class AssessmentRepository {
     correctOptionId?: string;
     marks: number;
     competencyIds: string[];
+    aiGenerated?: boolean;
   }): Promise<Question> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
+      const aiGenerated = input.aiGenerated ?? false;
       const { rows } = await client.query<QuestionRow>(
         `INSERT INTO assessment.questions
-           (id, tenant_id, bank_id, question_type, prompt, options, correct_option_id, marks, competency_ids)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5::jsonb, $6, $7, $8)
+           (id, tenant_id, bank_id, question_type, prompt, options, correct_option_id,
+            marks, competency_ids, ai_generated, review_status)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
           id,
@@ -188,24 +195,55 @@ export class AssessmentRepository {
           input.options ? JSON.stringify(input.options) : null,
           input.correctOptionId ?? null,
           input.marks,
-          input.competencyIds
+          input.competencyIds,
+          aiGenerated,
+          // AI-drafted questions start 'pending' — structurally unselectable
+          // for a real exam (see drawRandomQuestionIds / countQuestionsInBank)
+          // until a teacher explicitly approves them.
+          aiGenerated ? 'pending' : 'approved'
         ]
       );
       await this.audit.record(client, {
         action: 'question.created',
         entityType: 'question',
         entityId: id,
-        after: { bankId: input.bankId, questionType: input.questionType }
+        after: { bankId: input.bankId, questionType: input.questionType, aiGenerated }
       });
       return toQuestion(rows[0]!);
     });
   }
 
+  async reviewQuestion(
+    id: string,
+    status: 'approved' | 'rejected'
+  ): Promise<Question | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<QuestionRow>(
+        `UPDATE assessment.questions SET review_status = $2
+          WHERE id = $1 AND tenant_id = core.current_tenant_id()
+            AND ai_generated = true AND review_status = 'pending'
+          RETURNING *`,
+        [id, status]
+      );
+      if (!rows[0]) return null;
+      await this.audit.record(client, {
+        action: 'question.reviewed',
+        entityType: 'question',
+        entityId: id,
+        after: { reviewStatus: status }
+      });
+      return toQuestion(rows[0]);
+    });
+  }
+
+  /** Only APPROVED questions count — a bank padded with unreviewed AI
+   *  drafts must not let an exam creation check pass on their strength. */
   async countQuestionsInBank(bankId: string): Promise<number> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{ n: string }>(
         `SELECT count(*)::int AS n FROM assessment.questions
-          WHERE bank_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+          WHERE bank_id = $1 AND tenant_id = core.current_tenant_id()
+            AND deleted_at IS NULL AND review_status = 'approved'`,
         [bankId]
       );
       return Number(rows[0]?.n ?? 0);
@@ -294,7 +332,11 @@ export class AssessmentRepository {
   /**
    * Draws `questionCount` random question ids via Postgres's own
    * ORDER BY random() — randomization happens in the database, not by
-   * fetching everything and shuffling in Node.
+   * fetching everything and shuffling in Node. THE safety gate: only
+   * review_status = 'approved' questions are eligible, so an
+   * AI-drafted question sitting at 'pending' is structurally
+   * impossible to draw into a real attempt, regardless of any other
+   * check (or bug) elsewhere in the call path.
    */
   private async drawRandomQuestionIds(
     client: PoolClient,
@@ -303,7 +345,8 @@ export class AssessmentRepository {
   ): Promise<string[]> {
     const { rows } = await client.query<{ id: string }>(
       `SELECT id FROM assessment.questions
-        WHERE bank_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+        WHERE bank_id = $1 AND tenant_id = core.current_tenant_id()
+          AND deleted_at IS NULL AND review_status = 'approved'
         ORDER BY random()
         LIMIT $2`,
       [bankId, count]

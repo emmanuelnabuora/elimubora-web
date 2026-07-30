@@ -38,6 +38,7 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "rootDir": ".",
+    "maxWorkers": 2,
     "testMatch": [
       "<rootDir>/src/**/*.spec.ts",
       "<rootDir>/test/**/*.e2e-spec.ts",

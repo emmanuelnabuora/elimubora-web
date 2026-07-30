@@ -53,6 +53,14 @@ export class LessonPlansController {
     return this.service.createLessonPlan(user, dto);
   }
 
+  @Post('ai-draft')
+  draftWithAi(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(draftLessonPlanWithAiSchema)) dto: DraftLessonPlanWithAiDto
+  ) {
+    return this.service.draftLessonPlanWithAi(user, dto);
+  }
+
   @Get('course/:courseId')
   listForCourse(@Param('courseId', ParseUUIDPipe) courseId: string) {
     return this.service.listLessonPlans(courseId);

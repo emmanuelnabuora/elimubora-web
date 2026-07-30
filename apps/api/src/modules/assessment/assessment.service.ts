@@ -1,10 +1,13 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../core/auth/auth.types';
+import { AiInteractionLogService } from '../../core/ai/ai-interaction-log.service';
+import { AI_PROVIDER, type AiProvider } from '../../core/ai/ai-provider.port';
 import type {
   CreateExamDto,
   CreateQuestionBankDto,
@@ -33,7 +36,11 @@ function stripAnswerKey(q: Question): QuestionForLearner {
 
 @Injectable()
 export class AssessmentService {
-  constructor(private readonly repo: AssessmentRepository) {}
+  constructor(
+    private readonly repo: AssessmentRepository,
+    @Inject(AI_PROVIDER) private readonly ai: AiProvider,
+    private readonly aiLog: AiInteractionLogService
+  ) {}
 
   private requireStaff(user: AuthenticatedUser): void {
     if (!STAFF_ROLES.has(user.role)) {
@@ -60,6 +67,61 @@ export class AssessmentService {
     const bank = await this.repo.findQuestionBank(bankId);
     if (!bank) throw new NotFoundException('Question bank not found');
     return this.repo.createQuestion({ ...dto, bankId });
+  }
+
+  /**
+   * Drafts an MCQ question via the AI provider — lands with
+   * review_status='pending', which the exam draw query treats as
+   * structurally unselectable (AssessmentRepository.drawRandomQuestionIds)
+   * until a teacher calls reviewQuestion to approve it. The sandbox
+   * provider (see ai-provider.port.ts) returns a placeholder, not a
+   * real generated question — a teacher reviewing this draft in
+   * production is reviewing real AI output, but nothing here fakes that.
+   */
+  async draftQuestionWithAi(
+    user: AuthenticatedUser,
+    bankId: string,
+    input: { topic: string; marks: number }
+  ): Promise<Question> {
+    this.requireStaff(user);
+    const bank = await this.repo.findQuestionBank(bankId);
+    if (!bank) throw new NotFoundException('Question bank not found');
+
+    const result = await this.ai.complete({
+      feature: 'exam_question_draft',
+      prompt: `Draft one multiple-choice question for ${bank.subject} (${bank.gradeLevel}) on: ${input.topic}`,
+      context: { bankId }
+    });
+    await this.aiLog.record({
+      userId: user.userId,
+      feature: 'exam_question_draft',
+      context: { bankId, topic: input.topic },
+      promptSummary: input.topic,
+      responseSummary: result.text
+    });
+    // The sandbox provider returns free text, not a structured MCQ —
+    // stored as a short-answer draft (no fabricated options/answer
+    // key) pending human review, rather than pretending to parse a
+    // real multiple-choice structure out of a placeholder string.
+    return this.repo.createQuestion({
+      bankId,
+      questionType: 'short_answer',
+      prompt: result.text,
+      marks: input.marks,
+      competencyIds: [],
+      aiGenerated: true
+    });
+  }
+
+  async reviewQuestion(
+    user: AuthenticatedUser,
+    questionId: string,
+    status: 'approved' | 'rejected'
+  ): Promise<Question> {
+    this.requireStaff(user);
+    const reviewed = await this.repo.reviewQuestion(questionId, status);
+    if (!reviewed) throw new NotFoundException('No pending AI-drafted question found with that id');
+    return reviewed;
   }
 
   // ---------------- exams ----------------
