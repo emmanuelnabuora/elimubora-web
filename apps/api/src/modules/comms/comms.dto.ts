@@ -5,4 +5,8 @@ export const createAnnouncementSchema = z.object({
   body: z.string().min(1).max(10_000),
   gradeLevel: z.string().max(10).optional()
 });
-export type CreateAnnouncementDto = z.infer<typeof createAnnouncementSchema>;
+export interface CreateAnnouncementDto {
+  title: string;
+  body: string;
+  gradeLevel?: string;
+}
