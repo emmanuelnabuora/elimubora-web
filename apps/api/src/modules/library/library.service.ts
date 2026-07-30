@@ -14,17 +14,20 @@ export class LibraryService {
     if (!STAFF_ROLES.has(user.role)) {
       throw new ForbiddenException('Only staff can publish library resources');
     }
-    // Explicit field-by-field construction rather than a spread: this
-    // removes any dependency on how a given TypeScript/zod version
-    // infers optionality across the DTO -> repository boundary.
+    // Non-null assertions are safe here: ZodValidationPipe has already
+    // validated `dto` before this method runs, so these fields are
+    // guaranteed present at runtime regardless of what a given
+    // TypeScript/zod version infers statically at this call site
+    // (the actual root cause of a build failure caught in deployment
+    // that couldn't be reproduced in every local environment).
     return this.repo.createResource({
-      title: dto.title,
-      resourceType: dto.resourceType,
-      subject: dto.subject,
+      title: dto.title!,
+      resourceType: dto.resourceType!,
+      subject: dto.subject!,
       gradeLevel: dto.gradeLevel,
       description: dto.description,
-      storageKey: dto.storageKey,
-      tags: dto.tags,
+      storageKey: dto.storageKey!,
+      tags: dto.tags ?? [],
       createdBy: user.userId
     });
   }
