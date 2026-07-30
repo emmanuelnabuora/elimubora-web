@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_CONFIG, loadConfig } from '../config/configuration';
 import { AuditService } from './audit/audit.service';
 import { DatabaseService } from './database/database.service';
+import { WorkerDatabaseService } from './database/worker-database.service';
 import { HealthController } from './health/health.controller';
 import {
   DevLogNotificationChannel,
@@ -33,6 +34,7 @@ import { PAYMENT_GATEWAY } from './payments/payment-gateway.port';
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
     { provide: NOTIFICATION_CHANNEL, useClass: DevLogNotificationChannel },
     DatabaseService,
+    WorkerDatabaseService,
     AuditService,
     OutboxService,
     OutboxRelay,
@@ -48,6 +50,7 @@ import { PAYMENT_GATEWAY } from './payments/payment-gateway.port';
     EVENT_PUBLISHER,
     NOTIFICATION_CHANNEL,
     DatabaseService,
+    WorkerDatabaseService,
     AuditService,
     OutboxService,
     SyncService,

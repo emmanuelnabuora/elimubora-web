@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { APP_CONFIG, type AppConfig } from '../src/config/configuration';
 import { DatabaseService } from '../src/core/database/database.service';
+import { WorkerDatabaseService } from '../src/core/database/worker-database.service';
 import { OutboxRelay } from '../src/core/outbox/outbox.relay';
 
 const testConfig: AppConfig = {
@@ -43,6 +44,8 @@ describe('API foundation (e2e)', () => {
       .useValue(dbMock)
       .overrideProvider(OutboxRelay)
       .useValue({ onModuleInit: jest.fn(), onModuleDestroy: jest.fn() })
+      .overrideProvider(WorkerDatabaseService)
+      .useValue({ onModuleInit: jest.fn(), onModuleDestroy: jest.fn(), query: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();
