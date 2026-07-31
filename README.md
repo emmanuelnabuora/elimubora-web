@@ -43,6 +43,20 @@ syncable entity: submissions (create-only, first-write-wins, Sprint 4)
 and attendance (last-write-wins, unconditional overwrite, Sprint 6).
 See docs/adr/ADR-007 and ADR-009.
 
+## Web frontend (login + auth)
+
+    /                    Role-selector landing page (Teacher/Student/Parent/
+                          Admin/Ministry doors)
+    /login/[role]         Login form: credentials -> MFA step-up -> institution
+                          picker, matching AuthService's three real outcomes
+    /dashboard            Minimal authenticated confirmation page
+    /api/auth/*           Next.js Route Handlers (BFF): tokens live in httpOnly
+                          cookies, never in client-readable storage
+
+See docs/adr/ADR-014 for the httpOnly-cookie architecture and two real
+bugs found by finally booting the actual production entrypoint
+end-to-end for the first time in the project.
+
 ## Domain modules (Sprints 5-10)
 
     Sprint 5  Student Information System   /students /admissions /transfers /guardians

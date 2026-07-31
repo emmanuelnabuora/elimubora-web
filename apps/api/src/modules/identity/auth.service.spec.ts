@@ -217,4 +217,28 @@ describe('AuthService', () => {
       service.verifyMfa({ mfaToken: login.mfaToken, code: '000000' })
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('returns select_institution with the REAL memberships list when a user belongs to more than one school — not an opaque error', async () => {
+    const secondMembership: MembershipRecord = {
+      tenantId: 'ten-2',
+      tenantSlug: 'alliance-high',
+      tenantName: 'Alliance High',
+      role: 'principal'
+    };
+    repo.memberships = [membership, secondMembership];
+
+    const result = await service.login({ email: 'amina@school.ke', password: 'Sound-Password-123' });
+    if (result.kind !== 'select_institution') throw new Error('expected select_institution');
+    expect(result.memberships).toEqual([membership, secondMembership]);
+
+    // Once a tenantId is supplied, login proceeds normally against that institution.
+    const resolved = await service.login({
+      email: 'amina@school.ke',
+      password: 'Sound-Password-123',
+      tenantId: 'ten-2'
+    });
+    if (resolved.kind !== 'authenticated') throw new Error('expected tokens');
+    const claims = await tokens.verify(resolved.tokens.accessToken, 'access');
+    expect(claims).toMatchObject({ ten: 'ten-2', rol: 'principal' });
+  });
 });

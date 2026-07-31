@@ -16,3 +16,481 @@ a { color: var(--eb-primary); }
   outline: 2px solid var(--eb-focus);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------
+   Landing page: role doorways.
+   Each tile is a literal "door" — a thin top accent plus an arrow
+   that steps forward on hover/focus — extending the page's own
+   structure of separate entrances for separate people rather than
+   decorating it with something arbitrary.
+------------------------------------------------------------------ */
+
+.landing {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--eb-space-16) var(--eb-space-4) var(--eb-space-8);
+}
+
+.landing-hero {
+  text-align: center;
+  max-width: 640px;
+  margin-bottom: var(--eb-space-16);
+}
+
+.landing-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--eb-radius-sm);
+  background: var(--eb-primary);
+  color: var(--eb-primary-contrast);
+  display: grid;
+  place-items: center;
+  font-family: var(--eb-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0 auto var(--eb-space-4);
+}
+
+.landing-title {
+  font-family: var(--eb-font-display);
+  font-weight: 700;
+  font-size: clamp(32px, 5vw, 44px);
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--eb-space-2);
+  color: var(--eb-fg);
+}
+
+.landing-tagline {
+  font-size: 16px;
+  color: var(--eb-fg-muted);
+  margin: 0;
+}
+
+.door-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--eb-space-4);
+  width: 100%;
+  max-width: 880px;
+}
+
+@media (max-width: 720px) {
+  .door-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.door-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--eb-space-2);
+  text-align: left;
+  background: var(--eb-surface);
+  border: 1px solid var(--eb-line);
+  border-radius: var(--eb-radius-md);
+  padding: var(--eb-space-6) var(--eb-space-5, var(--eb-space-4));
+  padding-top: calc(var(--eb-space-6) + 4px);
+  overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.door-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--door-accent, var(--eb-primary));
+}
+
+.door-card:hover,
+.door-card:focus-visible {
+  border-color: var(--door-accent, var(--eb-primary));
+  box-shadow: 0 6px 20px -8px rgba(14, 92, 56, 0.25);
+  transform: translateY(-2px);
+}
+
+.door-title {
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--eb-fg);
+  margin: 0;
+}
+
+.door-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--eb-fg-muted);
+  margin: 0;
+}
+
+.door-arrow {
+  margin-top: var(--eb-space-2);
+  font-family: var(--eb-font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--door-accent, var(--eb-primary));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: gap 150ms ease;
+}
+
+.door-card:hover .door-arrow,
+.door-card:focus-visible .door-arrow {
+  gap: 10px;
+}
+
+.door-admin {
+  width: 100%;
+  max-width: 880px;
+  margin-top: var(--eb-space-4);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.door-admin .door-title {
+  font-size: 17px;
+}
+
+.secondary-access {
+  margin-top: var(--eb-space-10);
+  font-size: 14px;
+  color: var(--eb-fg-muted);
+}
+
+.secondary-access a {
+  color: var(--eb-fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--eb-line);
+  text-underline-offset: 3px;
+}
+
+.secondary-access a:hover {
+  text-decoration-color: currentColor;
+}
+
+.landing-footer {
+  margin-top: var(--eb-space-16);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--eb-space-4);
+  font-size: 13px;
+  color: var(--eb-fg-muted);
+}
+
+.landing-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing-footer a:hover {
+  color: var(--eb-fg);
+  text-decoration: underline;
+}
+
+.landing-footer .divider {
+  color: var(--eb-line);
+}
+
+/* ---------------------------------------------------------------
+   Auth pages: login, MFA step-up, institution picker.
+------------------------------------------------------------------ */
+
+.auth-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--eb-space-8) var(--eb-space-4);
+}
+
+.auth-back {
+  align-self: flex-start;
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--eb-fg-muted);
+  text-decoration: none;
+  margin-bottom: var(--eb-space-16);
+}
+
+.auth-back:hover {
+  color: var(--eb-fg);
+}
+
+.auth-wrap {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-role-label {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eb-fg-muted);
+  margin: 0 0 var(--eb-space-2);
+}
+
+.auth-heading {
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--eb-fg);
+  margin: 0 0 var(--eb-space-8);
+}
+
+.auth-card {
+  background: var(--eb-surface);
+  border: 1px solid var(--eb-line);
+  border-top: 4px solid var(--door-accent, var(--eb-primary));
+  border-radius: var(--eb-radius-md);
+  padding: var(--eb-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--eb-space-4);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eb-space-1);
+  font-size: 14px;
+  color: var(--eb-fg);
+}
+
+.auth-field input {
+  font-family: var(--eb-font-body);
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: var(--eb-radius-sm);
+  border: 1px solid var(--eb-line);
+  background: var(--eb-bg);
+  color: var(--eb-fg);
+}
+
+.auth-field input:focus-visible {
+  outline: 2px solid var(--eb-focus);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.auth-desc {
+  font-size: 14px;
+  color: var(--eb-fg-muted);
+  margin: -8px 0 0;
+}
+
+.auth-step-label {
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--eb-fg);
+  margin: 0;
+}
+
+.auth-error {
+  font-size: 13px;
+  color: var(--eb-danger);
+  background: var(--eb-red-100);
+  border-radius: var(--eb-radius-sm);
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.auth-submit {
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--eb-primary-contrast);
+  background: var(--door-accent, var(--eb-primary));
+  border: none;
+  border-radius: var(--eb-radius-sm);
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.auth-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-forgot {
+  align-self: center;
+  font-size: 13px;
+  color: var(--eb-fg-muted);
+  text-decoration: none;
+}
+
+.auth-forgot:hover {
+  color: var(--eb-fg);
+  text-decoration: underline;
+}
+
+.institution-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eb-space-2);
+}
+
+.institution-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--eb-font-body);
+  font-size: 14px;
+  color: var(--eb-fg);
+  background: var(--eb-bg);
+  border: 1px solid var(--eb-line);
+  border-radius: var(--eb-radius-sm);
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease;
+}
+
+.institution-option:hover:not(:disabled) {
+  border-color: var(--door-accent, var(--eb-primary));
+}
+
+.institution-role {
+  font-size: 12px;
+  color: var(--eb-fg-muted);
+  text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------------
+   Dashboard: minimal authenticated confirmation.
+------------------------------------------------------------------ */
+
+.dashboard-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--eb-space-4);
+}
+
+.dashboard-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--eb-surface);
+  border: 1px solid var(--eb-line);
+  border-radius: var(--eb-radius-md);
+  padding: var(--eb-space-8);
+}
+
+.dashboard-facts {
+  display: grid;
+  gap: var(--eb-space-3);
+  margin: var(--eb-space-6) 0;
+  padding-top: var(--eb-space-4);
+  border-top: 1px solid var(--eb-line);
+}
+
+.dashboard-facts > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.dashboard-facts dt {
+  color: var(--eb-fg-muted);
+}
+
+.dashboard-facts dd {
+  margin: 0;
+  color: var(--eb-fg);
+  font-weight: 500;
+}
+
+.dashboard-subhead {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--eb-fg-muted);
+  margin: 0 0 var(--eb-space-2);
+}
+
+.dashboard-memberships {
+  list-style: none;
+  margin: 0 0 var(--eb-space-6);
+  padding: 0;
+  display: grid;
+  gap: var(--eb-space-2);
+}
+
+.dashboard-memberships li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 8px 10px;
+  background: var(--eb-bg);
+  border-radius: var(--eb-radius-sm);
+}
+
+.dashboard-logout {
+  width: 100%;
+  font-family: var(--eb-font-body);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--eb-fg);
+  background: var(--eb-bg);
+  border: 1px solid var(--eb-line);
+  border-radius: var(--eb-radius-sm);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.dashboard-logout:hover:not(:disabled) {
+  border-color: var(--eb-fg-muted);
+}
+
+/* ---------------------------------------------------------------
+   Simple stub content pages (Help, Privacy, Accessibility, Language).
+------------------------------------------------------------------ */
+
+.stub-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--eb-space-16) var(--eb-space-4);
+}
+
+.stub-page h1 {
+  font-family: var(--eb-font-display);
+  font-size: 28px;
+  margin: 0 0 var(--eb-space-4);
+}
+
+.stub-page p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--eb-fg-muted);
+}
+
+.stub-back {
+  display: inline-block;
+  margin-top: var(--eb-space-6);
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--eb-primary);
+  text-decoration: none;
+}

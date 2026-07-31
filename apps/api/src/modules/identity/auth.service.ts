@@ -24,7 +24,8 @@ export interface AuthTokens {
 
 export type LoginResult =
   | { kind: 'authenticated'; tokens: AuthTokens; memberships: MembershipRecord[] }
-  | { kind: 'mfa_required'; mfaToken: string };
+  | { kind: 'mfa_required'; mfaToken: string }
+  | { kind: 'select_institution'; memberships: MembershipRecord[] };
 
 /**
  * Authentication flows. Deliberate properties:
@@ -69,6 +70,16 @@ export class AuthService {
     await this.repo.recordLoginSuccess(user.id);
 
     const memberships = await this.repo.listMembershipsForUser(user.id);
+    if (memberships.length === 0) {
+      throw new ForbiddenException('No active institution membership');
+    }
+    if (!input.tenantId && memberships.length > 1) {
+      // The caller has more than one institution and hasn't picked
+      // one yet. Returning the list (rather than throwing an opaque
+      // error) is what lets the frontend render a real "which school"
+      // picker — a plain error string gives it nothing to work with.
+      return { kind: 'select_institution', memberships };
+    }
     const membership = this.selectMembership(memberships, input.tenantId);
 
     if (user.totpEnabled) {

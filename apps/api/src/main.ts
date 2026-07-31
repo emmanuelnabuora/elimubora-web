@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { loadConfig } from './config/configuration';
@@ -8,9 +8,6 @@ async function bootstrap(): Promise<void> {
   const config = loadConfig(process.env);
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })
-  );
   app.enableShutdownHooks();
   app.setGlobalPrefix('v1', { exclude: ['health'] });
 

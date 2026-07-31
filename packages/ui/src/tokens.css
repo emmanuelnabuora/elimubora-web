@@ -49,6 +49,8 @@
   --eb-space-4: 16px;
   --eb-space-6: 24px;
   --eb-space-8: 32px;
+  --eb-space-10: 40px;
+  --eb-space-16: 64px;
 }
 
 @media (prefers-color-scheme: dark) {
