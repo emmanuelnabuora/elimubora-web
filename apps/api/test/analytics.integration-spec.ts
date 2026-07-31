@@ -196,7 +196,7 @@ d('Analytics (integration)', () => {
       .set('authorization', `Bearer ${submittingLearnerToken}`)
       .send({ content: {} })
       .expect(201);
-  });
+  }, 30_000); // ~20 sequential setup requests — past Jest's 5s default under load
 
   afterAll(async () => {
     await app?.close();

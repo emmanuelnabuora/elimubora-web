@@ -27,6 +27,15 @@ Kenya's National Digital Education Platform — monorepo.
     npm test                 # unit + e2e (no database required)
     npm run lint:boundaries  # architectural rules (dependency-cruiser)
 
+CI (.github/workflows/ci.yml) additionally proves the DEPLOYABLE app
+boots, not just that the test-harness bypass works (see ADR-014):
+  1. A dedicated Jest step runs bootstrap.integration-spec.ts, which
+     constructs the app via NestFactory.create — the real main.ts
+     path — rather than the TestingModule bypass every other test uses.
+  2. A separate step builds the actual dist/main.js artifact and boots
+     it with plain `node` (not ts-node), polling /health until it
+     responds or failing the build outright.
+
     # full integration suite (requires migrated Postgres, see CI):
     INTEGRATION_DATABASE_URL=postgres://elimubora_app:app_dev_password@localhost:5432/elimubora \
     INTEGRATION_ADMIN_DATABASE_URL=postgres://elimubora:elimubora_dev_password@localhost:5432/elimubora \

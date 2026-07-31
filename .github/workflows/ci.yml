@@ -41,6 +41,41 @@ jobs:
         env:
           MIGRATIONS_DATABASE_URL: postgres://elimubora:elimubora_dev_password@localhost:5432/elimubora
         run: node tools/migrate.mjs
+      - name: Bootstrap smoke test (real NestFactory.create, not the TestingModule bypass)
+        env:
+          INTEGRATION_DATABASE_URL: postgres://elimubora_app:app_dev_password@localhost:5432/elimubora
+        run: npx jest --config apps/api/package.json --rootDir apps/api --testPathPattern bootstrap.integration
+      - name: Build the deployable API artifact
+        run: npx turbo run build --filter=@elimubora/api...
+      - name: Boot the compiled artifact (dist/main.js) — proves the actual deployable build works, not just source under ts-node
+        env:
+          PORT: 4000
+          NODE_ENV: production
+          DATABASE_URL: postgres://elimubora_app:app_dev_password@localhost:5432/elimubora
+          WORKER_DATABASE_URL: postgres://elimubora_worker:worker_dev_password@localhost:5432/elimubora
+          AUTH_JWT_SECRET: ci-boot-check-secret-ci-boot-check-secret-value
+          PUBLIC_WEB_URL: http://localhost:3000
+        run: |
+          AUTH_ENC_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+          export AUTH_ENC_KEY
+          node apps/api/dist/main.js > /tmp/boot-artifact.log 2>&1 &
+          BOOT_PID=$!
+          ok=0
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::The compiled API artifact (dist/main.js) never became healthy — the deployable build does not boot."
+            cat /tmp/boot-artifact.log
+            kill $BOOT_PID 2>/dev/null || true
+            exit 1
+          fi
+          echo "Deployable artifact booted and reported healthy."
+          kill $BOOT_PID 2>/dev/null || true
       - name: Unit, e2e and integration tests
         env:
           INTEGRATION_DATABASE_URL: postgres://elimubora_app:app_dev_password@localhost:5432/elimubora
