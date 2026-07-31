@@ -4,6 +4,7 @@ import { FinanceModule } from '../modules/finance/finance.module';
 import { LearningModule } from '../modules/learning/learning.module';
 import { SisModule } from '../modules/sis/sis.module';
 import { TeacherPortalModule } from '../modules/teacher-portal/teacher-portal.module';
+import { AnalyticsController } from './analytics.controller';
 import { ParentPortalController } from './parent-portal.controller';
 import { TeacherDashboardController } from './teacher-dashboard.controller';
 
@@ -17,6 +18,6 @@ import { TeacherDashboardController } from './teacher-dashboard.controller';
  */
 @Module({
   imports: [LearningModule, TeacherPortalModule, SisModule, CommsModule, FinanceModule],
-  controllers: [TeacherDashboardController, ParentPortalController]
+  controllers: [TeacherDashboardController, ParentPortalController, AnalyticsController]
 })
 export class CompositionModule {}

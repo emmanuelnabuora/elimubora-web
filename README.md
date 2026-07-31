@@ -54,6 +54,8 @@ See docs/adr/ADR-007 and ADR-009.
     Sprint 11 Assessment Platform           /question-banks /exams /exam-attempts /certificates
     Sprint 12 AI Platform                    /ai/homework-help, /lesson-plans/ai-draft, /question-banks/:id/questions/ai-draft
     Sprint 13 Government Dashboard           /gov/enrollment /gov/attendance (+ /refresh, ministry-only)
+    Sprint 14 Analytics                      /analytics/course/:id /analytics/teacher/:id/grading-backlog
+                                              /analytics/finance/collection-summary /analytics/early-warning
 
 `apps/api/src/composition/` is a permitted exception to "modules never
 import each other" — read-only cross-module aggregation for dashboards

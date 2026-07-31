@@ -556,7 +556,7 @@ export class LearningRepository {
     });
   }
 
-  /** For the composition layer (Teacher Dashboard) — owned here since submissions are Learning's data. */
+  /** For the composition layer (Analytics) — owned here since submissions are Learning's data. */
   async countPendingGradingForCourse(courseId: string): Promise<number> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{ n: string }>(
@@ -568,6 +568,106 @@ export class LearningRepository {
         [courseId]
       );
       return Number(rows[0]?.n ?? 0);
+    });
+  }
+
+  /**
+   * Learning analytics for one course: enrollment, submission
+   * completion, and grading progress. A live aggregate, not a
+   * snapshot — unlike Government Dashboard (ADR-012), this stays
+   * entirely within one tenant's RLS boundary, so there is no
+   * cross-tenant read to work around and no need for a refreshed
+   * rollup table at ordinary school scale.
+   */
+  async getCourseAnalytics(courseId: string): Promise<{
+    enrolledLearners: number;
+    assignmentCount: number;
+    submittedCount: number;
+    gradedCount: number;
+    averageScore: number | null;
+  }> {
+    return this.db.withTenantTransaction(async (client) => {
+      const enrolled = await client.query<{ n: string }>(
+        `SELECT count(*)::int AS n FROM learning.enrollments
+          WHERE course_id = $1 AND course_role = 'learner'
+            AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [courseId]
+      );
+      const assignments = await client.query<{ n: string }>(
+        `SELECT count(*)::int AS n FROM learning.assignments
+          WHERE course_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [courseId]
+      );
+      const submissions = await client.query<{
+        submitted: string;
+        graded: string;
+        avg_score: string | null;
+      }>(
+        `SELECT
+           count(*) FILTER (WHERE s.status IN ('submitted', 'graded')) AS submitted,
+           count(*) FILTER (WHERE s.status = 'graded') AS graded,
+           avg(s.score) FILTER (WHERE s.status = 'graded') AS avg_score
+           FROM learning.submissions s
+           JOIN learning.assignments a ON a.id = s.assignment_id
+          WHERE a.course_id = $1 AND s.tenant_id = core.current_tenant_id()`,
+        [courseId]
+      );
+      const row = submissions.rows[0];
+      return {
+        enrolledLearners: Number(enrolled.rows[0]?.n ?? 0),
+        assignmentCount: Number(assignments.rows[0]?.n ?? 0),
+        submittedCount: Number(row?.submitted ?? 0),
+        gradedCount: Number(row?.graded ?? 0),
+        averageScore: row?.avg_score !== null && row?.avg_score !== undefined ? Number(row.avg_score) : null
+      };
+    });
+  }
+
+  /** Performance analytics for one learner: their average graded score across every course. */
+  async getLearnerPerformance(learnerId: string): Promise<{
+    gradedSubmissionCount: number;
+    averageScore: number | null;
+  }> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ n: string; avg_score: string | null }>(
+        `SELECT count(*)::int AS n, avg(score) AS avg_score
+           FROM learning.submissions
+          WHERE learner_id = $1 AND status = 'graded' AND tenant_id = core.current_tenant_id()`,
+        [learnerId]
+      );
+      const row = rows[0];
+      return {
+        gradedSubmissionCount: Number(row?.n ?? 0),
+        averageScore: row?.avg_score !== null && row?.avg_score !== undefined ? Number(row.avg_score) : null
+      };
+    });
+  }
+
+  /** Grading backlog across every course a teacher teaches — Teacher Analytics. */
+  async getGradingBacklogForTeacher(teacherId: string): Promise<number> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ n: string }>(
+        `SELECT count(*)::int AS n
+           FROM learning.submissions s
+           JOIN learning.assignments a ON a.id = s.assignment_id
+           JOIN learning.enrollments e
+             ON e.course_id = a.course_id AND e.user_id = $1 AND e.course_role = 'teacher'
+              AND e.tenant_id = core.current_tenant_id() AND e.deleted_at IS NULL
+          WHERE s.status = 'submitted' AND s.tenant_id = core.current_tenant_id()`,
+        [teacherId]
+      );
+      return Number(rows[0]?.n ?? 0);
+    });
+  }
+
+  /** All active learner ids in courses of a given grade level — the population Early Warning scans. */
+  async listActiveLearnerIds(): Promise<string[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ user_id: string }>(
+        `SELECT DISTINCT user_id FROM learning.enrollments
+          WHERE course_role = 'learner' AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`
+      );
+      return rows.map((r) => r.user_id);
     });
   }
 

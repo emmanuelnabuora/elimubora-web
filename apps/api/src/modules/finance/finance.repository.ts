@@ -201,6 +201,34 @@ export class FinanceRepository {
     });
   }
 
+  /** Financial Analytics: fee collection rate across every invoice for a year (optionally one term). */
+  async getCollectionSummary(
+    academicYear: number,
+    term?: number
+  ): Promise<{ totalInvoiced: string; totalCollected: string; invoiceCount: number }> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{
+        total_invoiced: string | null;
+        total_collected: string | null;
+        n: string;
+      }>(
+        `SELECT COALESCE(SUM(amount_due), 0) AS total_invoiced,
+                COALESCE(SUM(amount_paid), 0) AS total_collected,
+                count(*)::int AS n
+           FROM finance.invoices
+          WHERE academic_year = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+            AND ($2::smallint IS NULL OR term = $2)`,
+        [academicYear, term ?? null]
+      );
+      const row = rows[0];
+      return {
+        totalInvoiced: row?.total_invoiced ?? '0',
+        totalCollected: row?.total_collected ?? '0',
+        invoiceCount: Number(row?.n ?? 0)
+      };
+    });
+  }
+
   /**
    * Recomputes amount_paid as the sum of CONFIRMED payments and derives
    * status from it. Never trusts a client-supplied balance — this is

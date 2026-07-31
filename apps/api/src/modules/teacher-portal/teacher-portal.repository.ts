@@ -128,6 +128,26 @@ export class TeacherPortalRepository {
     });
   }
 
+  /** Attendance rate for one learner in a given academic year — the population Early Warning scans. */
+  async getAttendanceRateForLearner(
+    learnerId: string,
+    academicYear: number
+  ): Promise<{ recordedDays: number; presentOrLateDays: number } | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ recorded: string; present_or_late: string }>(
+        `SELECT count(*)::int AS recorded,
+                count(*) FILTER (WHERE status IN ('present', 'late'))::int AS present_or_late
+           FROM teacherportal.attendance_records
+          WHERE learner_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+            AND extract(year FROM attendance_date)::int = $2::int`,
+        [learnerId, academicYear]
+      );
+      const row = rows[0];
+      if (!row || Number(row.recorded) === 0) return null;
+      return { recordedDays: Number(row.recorded), presentOrLateDays: Number(row.present_or_late) };
+    });
+  }
+
   async createLessonPlan(input: {
     courseId: string;
     teacherId: string;
