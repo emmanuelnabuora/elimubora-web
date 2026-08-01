@@ -40,6 +40,7 @@ d('Government Dashboard (integration)', () => {
     outboxPollMs: 60_000,
     syncVisibilityDelaySeconds: 0,
     publicWebUrl: 'http://localhost:3000',
+  uploadsDir: './uploads-test',
     auth: {
       invitationTtlDays: 7,
       passwordResetTtlMinutes: 30,

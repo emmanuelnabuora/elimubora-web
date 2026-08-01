@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AttendanceSyncHandler } from './attendance-sync.handler';
 import { AttendanceController, LessonPlansController } from './teacher-portal.controller';
+import { TeacherPortalAttendanceMarker } from './teacher-portal-attendance-marker.adapter';
 import { TeacherPortalRepository } from './teacher-portal.repository';
 import { TeacherPortalService } from './teacher-portal.service';
 
@@ -11,7 +12,12 @@ import { TeacherPortalService } from './teacher-portal.service';
  */
 @Module({
   controllers: [AttendanceController, LessonPlansController],
-  providers: [TeacherPortalRepository, TeacherPortalService, AttendanceSyncHandler],
-  exports: [TeacherPortalRepository]
+  providers: [
+    TeacherPortalRepository,
+    TeacherPortalService,
+    AttendanceSyncHandler,
+    TeacherPortalAttendanceMarker
+  ],
+  exports: [TeacherPortalRepository, TeacherPortalAttendanceMarker]
 })
 export class TeacherPortalModule {}

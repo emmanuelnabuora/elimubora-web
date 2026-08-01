@@ -21,6 +21,10 @@ import { AI_PROVIDER } from './ai/ai-provider.port';
 import { SandboxAiProvider } from './ai/sandbox-ai.provider';
 import { ManualReconciliationGateway } from './payments/manual-reconciliation.gateway';
 import { PAYMENT_GATEWAY } from './payments/payment-gateway.port';
+import { SandboxPushProvider } from './push/sandbox-push.provider';
+import { PUSH_PROVIDER } from './push/push-provider.port';
+import { LocalFileStorageProvider } from './storage/local-file-storage.provider';
+import { FILE_STORAGE_PROVIDER } from './storage/file-storage.port';
 
 /**
  * Core platform services, available everywhere without imports.
@@ -43,7 +47,9 @@ import { PAYMENT_GATEWAY } from './payments/payment-gateway.port';
     UserProvisioningService,
     { provide: PAYMENT_GATEWAY, useClass: ManualReconciliationGateway },
     { provide: AI_PROVIDER, useClass: SandboxAiProvider },
-    AiInteractionLogService
+    AiInteractionLogService,
+    { provide: PUSH_PROVIDER, useClass: SandboxPushProvider },
+    { provide: FILE_STORAGE_PROVIDER, useClass: LocalFileStorageProvider }
   ],
   exports: [
     APP_CONFIG,
@@ -58,7 +64,9 @@ import { PAYMENT_GATEWAY } from './payments/payment-gateway.port';
     UserProvisioningService,
     PAYMENT_GATEWAY,
     AI_PROVIDER,
-    AiInteractionLogService
+    AiInteractionLogService,
+    PUSH_PROVIDER,
+    FILE_STORAGE_PROVIDER
   ]
 })
 export class CoreModule {}

@@ -8,3 +8,6 @@ coverage/
 .env.local
 *.tsbuildinfo
 next-env.d.ts
+uploads/
+apps/api/uploads/
+uploads-test*/

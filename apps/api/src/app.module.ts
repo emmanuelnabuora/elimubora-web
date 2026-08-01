@@ -11,6 +11,8 @@ import { SchoolAdminModule } from './modules/school-admin/school-admin.module';
 import { AssessmentModule } from './modules/assessment/assessment.module';
 import { GovernmentModule } from './modules/government/government.module';
 import { LibraryModule } from './modules/library/library.module';
+import { MobileModule } from './modules/mobile/mobile.module';
+import { AttendanceMarkerBindingModule } from './composition/attendance-marker-binding.module';
 import { CompositionModule } from './composition/composition.module';
 
 /**
@@ -19,7 +21,22 @@ import { CompositionModule } from './composition/composition.module';
  * on each other (enforced by dependency-cruiser in CI).
  */
 @Module({
-  imports: [CoreModule, IdentityModule, LearningModule, SisModule, TeacherPortalModule, CommsModule, SchoolAdminModule, FinanceModule, LibraryModule, AssessmentModule, GovernmentModule, CompositionModule]
+  imports: [
+    CoreModule,
+    IdentityModule,
+    LearningModule,
+    SisModule,
+    TeacherPortalModule,
+    CommsModule,
+    SchoolAdminModule,
+    FinanceModule,
+    LibraryModule,
+    AssessmentModule,
+    GovernmentModule,
+    AttendanceMarkerBindingModule,
+    MobileModule,
+    CompositionModule
+  ]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

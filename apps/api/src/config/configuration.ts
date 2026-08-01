@@ -22,6 +22,10 @@ const schema = z.object({
   AUTH_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).default(900),
   AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
   PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
+  /** Local-disk storage root for camera uploads (Sprint 15). A production
+   *  deployment swaps FileStorageProvider for an S3/R2 implementation
+   *  instead of relying on this path being durable across deploys. */
+  UPLOADS_DIR: z.string().default('./uploads'),
   INVITATION_TTL_DAYS: z.coerce.number().int().min(1).default(7),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).default(30),
   /** Open self-registration is a development convenience only. */
@@ -39,6 +43,7 @@ export interface AppConfig {
   outboxPollMs: number;
   syncVisibilityDelaySeconds: number;
   publicWebUrl: string;
+  uploadsDir: string;
   auth: {
     invitationTtlDays: number;
     passwordResetTtlMinutes: number;
@@ -70,6 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     outboxPollMs: v.OUTBOX_POLL_MS,
     syncVisibilityDelaySeconds: v.SYNC_VISIBILITY_DELAY_SECONDS,
     publicWebUrl: v.PUBLIC_WEB_URL,
+    uploadsDir: v.UPLOADS_DIR,
     auth: {
       invitationTtlDays: v.INVITATION_TTL_DAYS,
       passwordResetTtlMinutes: v.PASSWORD_RESET_TTL_MINUTES,

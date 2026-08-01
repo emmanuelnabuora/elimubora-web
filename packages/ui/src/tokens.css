@@ -2,35 +2,41 @@
  * ElimuBora design tokens — single source of truth for web; mobile
  * consumes a generated JSON copy in a later sprint.
  *
- * Identity: institutional trust with a distinctly Kenyan base.
- * "Shamba" green anchors the palette (growth, the flag, the land);
- * "Harambee" red is reserved for destructive/critical moments only;
- * "Jua" amber is the single highlight colour. Everything else stays quiet.
+ * Identity: institutional trust with a distinctly Kenyan base, in a
+ * dark forest-green register — "Shamba" green anchors the palette
+ * (growth, the flag, the land), "Jua" amber is the single warm
+ * highlight (the logo mark, focus rings), "Harambee" red is reserved
+ * for destructive/critical moments only.
  */
 :root {
   /* Palette */
-  --eb-green-900: #0b3d26;
+  --eb-green-900: #06120d;
+  --eb-green-800: #0a2118;
   --eb-green-700: #0e5c38;
-  --eb-green-500: #157a4a;
-  --eb-green-100: #ddefe5;
-  --eb-green-50:  #eef7f2;
-  --eb-ink-900:   #16211b;
-  --eb-ink-600:   #46534c;
-  --eb-ink-400:   #7d8983;
+  --eb-green-600: #167a4a;
+  --eb-green-500: #22a562;
+  --eb-green-300: #6fd39a;
+  --eb-green-100: #163a29;
+  --eb-ink-900:   #0a0f0c;
   --eb-paper:     #f7f8f6;
+  --eb-surface-dark: #0d1b14;
   --eb-surface:   #ffffff;
-  --eb-line:      #e2e6e3;
-  --eb-amber-500: #e9a13b;
+  --eb-line:      #1c3327;
+  --eb-line-soft: #24402f;
+  --eb-amber-500: #e9b23b;
   --eb-amber-100: #fbf0dc;
-  --eb-red-600:   #b5382a;
-  --eb-red-100:   #f7e3e0;
+  --eb-red-600:   #d1594a;
+  --eb-red-100:   #3a1a16;
 
-  /* Semantic */
-  --eb-bg: var(--eb-paper);
-  --eb-fg: var(--eb-ink-900);
-  --eb-fg-muted: var(--eb-ink-600);
-  --eb-primary: var(--eb-green-700);
-  --eb-primary-contrast: #ffffff;
+  /* Semantic — dark is the base register for this platform */
+  --eb-bg: var(--eb-green-900);
+  --eb-bg-panel: var(--eb-surface-dark);
+  --eb-fg: #eef5f0;
+  --eb-fg-muted: #9db3a5;
+  --eb-fg-faint: #6c8577;
+  --eb-primary: var(--eb-green-500);
+  --eb-primary-contrast: #04140d;
+  --eb-accent: var(--eb-amber-500);
   --eb-danger: var(--eb-red-600);
   --eb-focus: var(--eb-amber-500);
 
@@ -43,6 +49,7 @@
   /* Shape & space */
   --eb-radius-sm: 6px;
   --eb-radius-md: 10px;
+  --eb-radius-lg: 16px;
   --eb-space-1: 4px;
   --eb-space-2: 8px;
   --eb-space-3: 12px;
@@ -51,15 +58,4 @@
   --eb-space-8: 32px;
   --eb-space-10: 40px;
   --eb-space-16: 64px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --eb-bg: #101613;
-    --eb-fg: #e8ece9;
-    --eb-fg-muted: #a5b0aa;
-    --eb-surface: #171f1b;
-    --eb-line: #2a332e;
-    --eb-primary: #2f9c66;
-  }
 }

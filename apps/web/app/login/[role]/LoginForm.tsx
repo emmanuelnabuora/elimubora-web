@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { GoogleLogo, MicrosoftLogo } from '../../../components/icons';
 import type { RoleConfig } from '../../../lib/roles';
 
 interface Membership {
@@ -13,11 +14,16 @@ interface Membership {
 
 type Stage = 'credentials' | 'mfa' | 'select_institution';
 
-export function LoginForm({ role }: { role: RoleConfig }) {
+/** Excludes `icon` (a component reference) — functions can't cross the
+ *  server-to-client-component boundary, and this form never renders it anyway. */
+type LoginFormRole = Omit<RoleConfig, 'icon'>;
+
+export function LoginForm({ role }: { role: LoginFormRole }) {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [socialNote, setSocialNote] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -91,7 +97,7 @@ export function LoginForm({ role }: { role: RoleConfig }) {
   if (stage === 'select_institution') {
     return (
       <div className="auth-card" style={{ ['--door-accent' as string]: role.accent }}>
-        <p className="auth-step-label">Choose your institution</p>
+        <h2 className="auth-step-label">Choose your institution</h2>
         <p className="auth-desc">Your account is linked to more than one institution.</p>
         <div className="institution-list">
           {memberships.map((m) => (
@@ -119,7 +125,7 @@ export function LoginForm({ role }: { role: RoleConfig }) {
         onSubmit={handleMfaSubmit}
         style={{ ['--door-accent' as string]: role.accent }}
       >
-        <p className="auth-step-label">Enter your verification code</p>
+        <h2 className="auth-step-label">Enter your verification code</h2>
         <p className="auth-desc">Open your authenticator app and enter the 6-digit code.</p>
         <label className="auth-field">
           <span>Verification code</span>
@@ -148,6 +154,10 @@ export function LoginForm({ role }: { role: RoleConfig }) {
       onSubmit={handleCredentialsSubmit}
       style={{ ['--door-accent' as string]: role.accent }}
     >
+      <div>
+        <h2>{role.label} sign in</h2>
+        <p className="auth-welcome">Welcome back! Please sign in to continue.</p>
+      </div>
       <label className="auth-field">
         <span>Email</span>
         <input
@@ -160,7 +170,10 @@ export function LoginForm({ role }: { role: RoleConfig }) {
         />
       </label>
       <label className="auth-field">
-        <span>Password</span>
+        <div className="auth-field-row">
+          <span>Password</span>
+          <a href="/forgot-password">Forgot password?</a>
+        </div>
         <input
           type="password"
           value={password}
@@ -173,9 +186,25 @@ export function LoginForm({ role }: { role: RoleConfig }) {
       <button type="submit" className="auth-submit" disabled={loading}>
         {loading ? 'Signing in…' : 'Sign in'}
       </button>
-      <a className="auth-forgot" href="/forgot-password">
-        Forgot your password?
-      </a>
+      <div className="auth-social-divider">or continue with</div>
+      <div className="auth-social-row">
+        <button
+          type="button"
+          className="auth-social-button"
+          onClick={() => setSocialNote('Google sign-in is not connected yet — use email and password for now.')}
+        >
+          <GoogleLogo /> Google
+        </button>
+        <button
+          type="button"
+          className="auth-social-button"
+          onClick={() => setSocialNote('Microsoft sign-in is not connected yet — use email and password for now.')}
+        >
+          <MicrosoftLogo /> Microsoft
+        </button>
+      </div>
+      {socialNote && <p className="auth-social-note">{socialNote}</p>}
+      <p className="auth-footnote">{role.contactNote}</p>
     </form>
   );
 }
