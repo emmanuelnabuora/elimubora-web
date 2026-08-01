@@ -79,6 +79,8 @@ end-to-end for the first time in the project.
     Sprint 13 Government Dashboard           /gov/enrollment /gov/attendance (+ /refresh, ministry-only)
     Sprint 14 Analytics                      /analytics/course/:id /analytics/teacher/:id/grading-backlog
                                               /analytics/finance/collection-summary /analytics/early-warning
+    Sprint 15 Mobile Apps                    /mobile/devices, /mobile/uploads, /mobile/attendance-qr/*
+                                              (offline sync reuses Sprint 4's /v1/sync/pull|push as-is)
 
 `apps/api/src/composition/` is a permitted exception to "modules never
 import each other" — read-only cross-module aggregation for dashboards

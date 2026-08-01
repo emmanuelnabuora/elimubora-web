@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Client } from 'pg';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { applyGlobalAppConfig } from '../src/bootstrap';
 import { APP_CONFIG, type AppConfig } from '../src/config/configuration';
 
 const appUrl = process.env.INTEGRATION_DATABASE_URL;
@@ -71,7 +72,7 @@ d('Mobile (integration)', () => {
       .useValue(config)
       .compile();
     app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('v1', { exclude: ['health'] });
+    applyGlobalAppConfig(app);
     await app.init();
 
     const teacherEmail = `mob-teacher-${stamp}@school.ke`;
