@@ -359,6 +359,81 @@ export class SisRepository {
     });
   }
 
+  /** All class streams in the tenant — the admin dashboard's "which class" dropdown/list. */
+  async listClassStreams(): Promise<ClassStream[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{
+        id: string;
+        name: string;
+        grade_level: string;
+        academic_year: number;
+        homeroom_teacher_id: string | null;
+      }>(
+        `SELECT id, name, grade_level, academic_year, homeroom_teacher_id
+           FROM sis.class_streams
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY academic_year DESC, grade_level, name`
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        gradeLevel: r.grade_level,
+        academicYear: r.academic_year,
+        homeroomTeacherId: r.homeroom_teacher_id
+      }));
+    });
+  }
+
+  /**
+   * All active students in the tenant, with their name (from
+   * core.users — student_profiles itself has no name column) and
+   * current class allocation if any. A real gap the admin dashboard
+   * needs closed: previously only single-student lookup and
+   * per-class-stream rosters existed, no tenant-wide list at all.
+   */
+  async listStudents(): Promise<
+    Array<{
+      studentId: string;
+      fullName: string;
+      admissionNumber: string;
+      status: StudentProfile['status'];
+      classStreamId: string | null;
+      className: string | null;
+      gradeLevel: string | null;
+    }>
+  > {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{
+        student_id: string;
+        full_name: string;
+        admission_number: string;
+        status: StudentProfile['status'];
+        class_stream_id: string | null;
+        class_name: string | null;
+        grade_level: string | null;
+      }>(
+        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.status,
+                ca.class_stream_id, cs.name AS class_name, cs.grade_level
+           FROM sis.student_profiles sp
+           JOIN core.users u ON u.id = sp.student_id
+           LEFT JOIN sis.class_allocations ca
+             ON ca.student_id = sp.student_id AND ca.status = 'active' AND ca.deleted_at IS NULL
+           LEFT JOIN sis.class_streams cs ON cs.id = ca.class_stream_id
+          WHERE sp.tenant_id = core.current_tenant_id() AND sp.deleted_at IS NULL
+          ORDER BY u.full_name`
+      );
+      return rows.map((r) => ({
+        studentId: r.student_id,
+        fullName: r.full_name,
+        admissionNumber: r.admission_number,
+        status: r.status,
+        classStreamId: r.class_stream_id,
+        className: r.class_name,
+        gradeLevel: r.grade_level
+      }));
+    });
+  }
+
   async allocateToClass(input: {
     studentId: string;
     classStreamId: string;

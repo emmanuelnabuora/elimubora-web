@@ -83,6 +83,11 @@ export class LeaveRequestsController {
     return this.service.submitLeaveRequest(user, dto);
   }
 
+  @Get('pending')
+  listPending(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listPendingLeaveRequests(user);
+  }
+
   @Get('staff/:staffId')
   listForStaff(
     @CurrentUser() user: AuthenticatedUser,

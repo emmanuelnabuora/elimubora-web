@@ -107,8 +107,18 @@ export class SisService {
     return this.repo.createClassStream(dto);
   }
 
+  listClassStreams(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listClassStreams();
+  }
+
   listRoster(classStreamId: string) {
     return this.repo.listRosterForClass(classStreamId);
+  }
+
+  listStudents(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listStudents();
   }
 
   // ---------------- enrollment (the cross-cutting orchestration) ----------------

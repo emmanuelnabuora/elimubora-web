@@ -86,6 +86,11 @@ export class SchoolAdminService {
     return this.repo.listLeaveRequestsForStaff(targetStaffId);
   }
 
+  listPendingLeaveRequests(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listPendingLeaveRequests();
+  }
+
   async decideLeaveRequest(
     user: AuthenticatedUser,
     id: string,

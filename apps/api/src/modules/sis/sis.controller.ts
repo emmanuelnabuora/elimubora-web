@@ -77,6 +77,11 @@ export class ClassStreamsController {
     return this.sis.createClassStream(user, dto);
   }
 
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.listClassStreams(user);
+  }
+
   @Get(':id/roster')
   roster(@Param('id', ParseUUIDPipe) id: string) {
     return this.sis.listRoster(id);
@@ -115,6 +120,11 @@ export class StudentsController {
     @Body(new ZodValidationPipe(enrollStudentSchema)) dto: EnrollStudentDto
   ) {
     return this.sis.enrollStudent(user, dto);
+  }
+
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.listStudents(user);
   }
 
   @Get(':id')

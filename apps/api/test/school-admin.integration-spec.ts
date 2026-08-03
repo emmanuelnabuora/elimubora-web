@@ -316,4 +316,33 @@ d('School Administration (integration)', () => {
       .send({ status: 'approved' })
       .expect(403);
   });
+
+  it('GET /leave-requests/pending lists every pending request tenant-wide, with the staff name, admin-only', async () => {
+    // A dedicated request, found via find() rather than asserting an
+    // exact array length — other tests in this file (e.g. the one
+    // above) leave their own pending requests behind in the same
+    // tenant, which would make a length assertion fragile.
+    const teacherToken = await login(teacherEmail);
+    const dedicated = await request(app.getHttpServer())
+      .post('/v1/leave-requests')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ leaveType: 'unpaid', startDate: '2026-10-01', endDate: '2026-10-02', reason: 'Pending list test' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/v1/leave-requests/pending')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/leave-requests/pending')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const found = res.body.find((r: { id: string }) => r.id === dedicated.body.id);
+    expect(found).toBeDefined();
+    expect(found.status).toBe('pending');
+    expect(found.staffName).toBeTruthy();
+    // Already-decided requests from earlier tests must not appear.
+    expect(res.body.every((r: { status: string }) => r.status === 'pending')).toBe(true);
+  });
 });

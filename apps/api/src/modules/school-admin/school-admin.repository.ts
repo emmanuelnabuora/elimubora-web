@@ -280,4 +280,24 @@ export class SchoolAdminRepository {
       return rows.map(toLeave);
     });
   }
+
+  /**
+   * Tenant-wide, pending only — the existing method above is
+   * per-staff, which tells a teacher about their own requests but
+   * gives an admin no way to see everything actually awaiting a
+   * decision. Joined with core.users since LeaveRequest itself only
+   * carries staffId, not a name.
+   */
+  async listPendingLeaveRequests(): Promise<Array<LeaveRequest & { staffName: string }>> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<LeaveRow & { staff_name: string }>(
+        `SELECT lr.*, u.full_name AS staff_name
+           FROM schooladmin.leave_requests lr
+           JOIN core.users u ON u.id = lr.staff_id
+          WHERE lr.status = 'pending' AND lr.tenant_id = core.current_tenant_id() AND lr.deleted_at IS NULL
+          ORDER BY lr.start_date`
+      );
+      return rows.map((r) => ({ ...toLeave(r), staffName: r.staff_name }));
+    });
+  }
 }

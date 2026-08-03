@@ -303,4 +303,66 @@ d('Student Information System (integration)', () => {
       .expect(200);
     expect(profile.body.status).toBe('graduated');
   });
+
+  it('GET /class-streams lists tenant-scoped class streams, admin-only', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/class-streams')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const stream = res.body.find((s: { id: string }) => s.id === classStreamId);
+    expect(stream).toMatchObject({ name: 'Grade 4 Blue', gradeLevel: 'G4' });
+  });
+
+  it('GET /students lists tenant-scoped students with name and current class, admin-only', async () => {
+    // A dedicated, freshly-enrolled student — not the shared studentId
+    // fixture, whose status/class allocation earlier tests in this
+    // file have already mutated (transferred out) by this point.
+    const dedicatedStream = await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ name: 'Grade 5 Listing Test', gradeLevel: 'G5', academicYear: 2026 })
+      .expect(201);
+    const dedicatedStudent = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        fullName: 'Listing Test Student',
+        gradeLevel: 'G5',
+        classStreamId: dedicatedStream.body.id,
+        academicYear: 2026
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/v1/students')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const student = res.body.find(
+      (s: { studentId: string }) => s.studentId === dedicatedStudent.body.studentId
+    );
+    expect(student).toBeDefined();
+    expect(student.fullName).toBe('Listing Test Student');
+    expect(student.className).toBe('Grade 5 Listing Test');
+    expect(student.gradeLevel).toBe('G5');
+    expect(student.status).toBe('active');
+
+    // Tenant B's admin sees none of tenant A's students — real RLS isolation, not just a filter.
+    const resB = await request(app.getHttpServer())
+      .get('/v1/students')
+      .set('authorization', `Bearer ${adminBToken}`)
+      .expect(200);
+    expect(
+      resB.body.find((s: { studentId: string }) => s.studentId === dedicatedStudent.body.studentId)
+    ).toBeUndefined();
+  });
 });
