@@ -894,3 +894,372 @@ a { color: inherit; text-decoration: none; }
   font-size: 14px;
   padding: var(--eb-space-4) 0;
 }
+
+/* =================================================================
+   School Administrator Dashboard — a distinct visual system from
+   the rest of the app (dark forest-green), scoped entirely under
+   .sa-shell so Teacher/Student/Parent dashboards, which share some
+   of the same underlying class names elsewhere (.admin-*, .kpi-card,
+   .data-table), are completely unaffected. Matches the specific
+   "premium education SaaS" direction requested for this section:
+   dark indigo sidebar, light workspace, pastel-tinted KPI cards,
+   white bordered cards, real charts over real data.
+================================================================= */
+
+.sa-shell {
+  --sa-sidebar-1: #111b5c;
+  --sa-sidebar-2: #172875;
+  --sa-sidebar-active: #5145e5;
+  --sa-purple: #5546e8;
+  --sa-blue: #3478e5;
+  --sa-green: #20a85a;
+  --sa-orange: #f59e0b;
+  --sa-red: #ef3038;
+  --sa-bg: #f7f8fc;
+  --sa-surface: #ffffff;
+  --sa-border: #e4e8f0;
+  --sa-text: #12182a;
+  --sa-text-muted: #687089;
+  --sa-muted2: #98a0b5;
+  --sa-purple-tint: #f4f1ff;
+  --sa-green-tint: #effaf4;
+  --sa-blue-tint: #eef6ff;
+  --sa-orange-tint: #fff7e9;
+  --sa-red-tint: #fff1f2;
+
+  min-height: 100dvh;
+  display: flex;
+  background: var(--sa-bg);
+  color: var(--sa-text);
+  font-family: var(--eb-font-body);
+}
+
+.sa-sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--sa-sidebar-1), var(--sa-sidebar-2));
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+@media (max-width: 900px) {
+  .sa-sidebar { display: none; }
+}
+
+.sa-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 20px;
+}
+.sa-sidebar-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+.sa-sidebar-brand-name { font-family: var(--eb-font-display); font-weight: 700; font-size: 17px; }
+.sa-sidebar-brand-tagline { font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+
+.sa-nav-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 16px 12px 6px;
+}
+
+.sa-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 2px;
+}
+.sa-nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+.sa-nav-item.active { background: var(--sa-sidebar-active); color: #ffffff; font-weight: 600; }
+.sa-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.sa-sidebar-footer { margin-top: auto; padding-top: 16px; }
+.sa-institution-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.sa-institution-card svg { flex-shrink: 0; }
+
+.sa-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.sa-logout-btn:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+
+.sa-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.sa-header {
+  background: var(--sa-surface);
+  border-bottom: 1px solid var(--sa-border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sa-header-identity { display: flex; align-items: center; gap: 10px; }
+.sa-header-identity svg { color: var(--sa-purple); flex-shrink: 0; }
+.sa-header-school { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.sa-header-role { font-size: 12px; color: var(--sa-text-muted); }
+
+.sa-header-right { display: flex; align-items: center; gap: 16px; }
+.sa-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--sa-border);
+  background: var(--sa-surface);
+  display: grid;
+  place-items: center;
+  color: var(--sa-text-muted);
+}
+.sa-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--sa-red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  padding: 0 3px;
+}
+
+.sa-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--sa-purple-tint);
+  color: var(--sa-purple);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.sa-user-menu { display: flex; align-items: center; gap: 10px; }
+.sa-user-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+.sa-user-role { font-size: 11px; color: var(--sa-text-muted); }
+
+.sa-content { padding: 28px; max-width: 1400px; }
+
+.sa-greeting-title {
+  font-family: var(--eb-font-display);
+  font-weight: 700;
+  font-size: 28px;
+  margin: 0 0 4px;
+}
+.sa-greeting-sub { font-size: 14px; color: var(--sa-text-muted); margin: 0 0 24px; }
+
+.sa-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1200px) { .sa-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px) { .sa-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.sa-kpi-card {
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid transparent;
+}
+.sa-kpi-card.tone-purple { background: var(--sa-purple-tint); }
+.sa-kpi-card.tone-green { background: var(--sa-green-tint); }
+.sa-kpi-card.tone-blue { background: var(--sa-blue-tint); }
+.sa-kpi-card.tone-orange { background: var(--sa-orange-tint); }
+.sa-kpi-card.tone-red { background: var(--sa-red-tint); }
+
+.sa-kpi-label { font-size: 12px; font-weight: 600; color: var(--sa-text-muted); margin: 0 0 6px; }
+.sa-kpi-value { font-family: var(--eb-font-display); font-weight: 700; font-size: 26px; margin: 0 0 4px; }
+.sa-kpi-trend { font-size: 12px; font-weight: 600; }
+.sa-kpi-trend.up { color: var(--sa-green); }
+.sa-kpi-trend.down { color: var(--sa-red); }
+.sa-kpi-trend.neutral { color: var(--sa-text-muted); }
+
+.sa-grid { display: grid; gap: 16px; margin-bottom: 16px; }
+.sa-grid.cols-3 { grid-template-columns: 5fr 4fr 3fr; }
+@media (max-width: 1100px) { .sa-grid.cols-3 { grid-template-columns: 1fr; } }
+
+.sa-card {
+  background: var(--sa-surface);
+  border: 1px solid var(--sa-border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.sa-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.sa-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--eb-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+}
+.sa-card-title svg { color: var(--sa-purple); width: 18px; height: 18px; }
+
+.sa-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sa-purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sa-link:hover { text-decoration: underline; }
+
+.sa-empty { color: var(--sa-text-muted); font-size: 14px; padding: 12px 0; }
+
+.sa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sa-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--sa-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sa-border);
+}
+.sa-table td { padding: 10px; border-bottom: 1px solid var(--sa-border); }
+.sa-table tr:last-child td { border-bottom: none; }
+
+.sa-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.sa-pill.green { background: var(--sa-green-tint); color: var(--sa-green); }
+.sa-pill.orange { background: var(--sa-orange-tint); color: var(--sa-orange); }
+.sa-pill.red { background: var(--sa-red-tint); color: var(--sa-red); }
+.sa-pill.blue { background: var(--sa-blue-tint); color: var(--sa-blue); }
+.sa-pill.muted { background: #f1f2f6; color: var(--sa-text-muted); }
+
+.sa-form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+@media (max-width: 640px) { .sa-form-row { grid-template-columns: 1fr; } }
+.sa-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--sa-text-muted); }
+.sa-field input, .sa-field select {
+  font-family: var(--eb-font-body);
+  font-size: 14px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--sa-border);
+  background: var(--sa-bg);
+  color: var(--sa-text);
+}
+.sa-field input:focus-visible, .sa-field select:focus-visible {
+  outline: 2px solid var(--sa-purple);
+  outline-offset: 1px;
+}
+
+.sa-btn {
+  font-family: var(--eb-font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: #ffffff;
+  background: var(--sa-purple);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+}
+.sa-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.sa-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sa-btn.ghost { background: transparent; border: 1px solid var(--sa-border); color: var(--sa-text); }
+.sa-btn.danger-outline { background: transparent; border: 1px solid var(--sa-red); color: var(--sa-red); }
+
+.sa-error { font-size: 13px; color: var(--sa-red); background: var(--sa-red-tint); border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; }
+.sa-success { font-size: 13px; color: var(--sa-green); margin: 0 0 8px; font-weight: 600; }
+
+/* ---------------------------------------------------------------
+   Scoped overrides: existing shared component classes (built for
+   the dark-green theme, still used as-is by Teacher/Student/Parent)
+   pick up the new School Admin look automatically here, since every
+   admin page is nested under .sa-shell. Nothing outside .sa-shell is
+   affected — this changes zero files under /teacher, /student, or
+   /parent, and zero risk of regressing their already-verified UI.
+------------------------------------------------------------------ */
+
+.sa-shell .admin-page-title { font-family: var(--eb-font-display); font-weight: 700; font-size: 24px; margin: 0 0 24px; color: var(--sa-text); }
+.sa-shell .admin-section { background: var(--sa-surface); border: 1px solid var(--sa-border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.sa-shell .admin-section-title { font-family: var(--eb-font-display); font-weight: 700; font-size: 15px; margin: 0 0 16px; color: var(--sa-text); }
+.sa-shell .admin-empty { color: var(--sa-text-muted); font-size: 14px; padding: 12px 0; }
+
+.sa-shell .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sa-shell .data-table th { text-align: left; font-weight: 600; color: var(--sa-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--sa-border); }
+.sa-shell .data-table td { padding: 10px; border-bottom: 1px solid var(--sa-border); color: var(--sa-text); }
+.sa-shell .data-table tr:last-child td { border-bottom: none; }
+
+.sa-shell .status-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.sa-shell .status-pill.active { background: var(--sa-green-tint); color: var(--sa-green); }
+.sa-shell .status-pill.pending { background: var(--sa-orange-tint); color: var(--sa-orange); }
+.sa-shell .status-pill.inactive { background: #f1f2f6; color: var(--sa-text-muted); }
+
+.sa-shell .admin-form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+@media (max-width: 640px) { .sa-shell .admin-form-row { grid-template-columns: 1fr; } }
+.sa-shell .admin-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--sa-text-muted); }
+.sa-shell .admin-field input, .sa-shell .admin-field select {
+  font-family: var(--eb-font-body); font-size: 14px; padding: 9px 10px; border-radius: 8px;
+  border: 1px solid var(--sa-border); background: var(--sa-bg); color: var(--sa-text);
+}
+.sa-shell .admin-field input:focus-visible, .sa-shell .admin-field select:focus-visible {
+  outline: 2px solid var(--sa-purple); outline-offset: 1px;
+}
+
+.sa-shell .admin-submit {
+  font-family: var(--eb-font-display); font-weight: 600; font-size: 14px; color: #ffffff;
+  background: var(--sa-purple); border: none; border-radius: 8px; padding: 10px 18px; cursor: pointer;
+}
+.sa-shell .admin-submit:hover:not(:disabled) { filter: brightness(1.08); }
+.sa-shell .admin-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sa-shell .admin-action-row { display: flex; gap: 8px; }
+.sa-shell .admin-btn-approve { font-family: var(--eb-font-body); font-weight: 600; font-size: 13px; border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer; background: var(--sa-green); color: #fff; }
+.sa-shell .admin-btn-deny { font-family: var(--eb-font-body); font-weight: 600; font-size: 13px; border-radius: 8px; padding: 6px 12px; cursor: pointer; background: transparent; border: 1px solid var(--sa-red); color: var(--sa-red); }
+.sa-shell .admin-btn-approve:disabled, .sa-shell .admin-btn-deny:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sa-shell .auth-error { font-size: 13px; color: var(--sa-red); background: var(--sa-red-tint); border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; }
+.sa-shell .dashboard-subhead { font-size: 13px; margin: 0 0 8px; }
+.sa-shell .admin-nav-link { font-size: 13px; font-weight: 600; color: var(--sa-purple); }
