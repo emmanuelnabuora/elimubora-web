@@ -30,6 +30,13 @@ COPY --from=pruner /app/out/full/ .
 # Confirmed by actually running the build and reading the real error,
 # not guessed.
 COPY --from=pruner /app/tsconfig.base.json .
+# tools/ (migrate.mjs, rotate-secrets.mjs) isn't part of any workspace,
+# so turbo prune never includes it either — same root cause as
+# tsconfig.base.json above. Needed here because this same image is
+# reused to run migrations/secret-rotation as one-off Cloud Run Jobs,
+# not just to serve the API. No new dependency required: migrate.mjs
+# only imports 'pg', which apps/api already depends on directly.
+COPY --from=pruner /app/tools ./tools
 RUN npx turbo run build --filter=@elimubora/api...
 # Drop devDependencies (typescript, jest, ts-node, ...) before shipping —
 # nothing past this point needs them, only the compiled dist/ output.
