@@ -37,6 +37,12 @@ COPY --from=pruner /app/tsconfig.base.json .
 # not just to serve the API. No new dependency required: migrate.mjs
 # only imports 'pg', which apps/api already depends on directly.
 COPY --from=pruner /app/tools ./tools
+# db/migrations holds the SQL files migrate.mjs actually applies —
+# same root cause as the two fixes above (a root-level directory
+# outside any workspace, so turbo prune never includes it). Confirmed
+# directly: ls out/full/db -> No such file or directory, before
+# writing this fix, not guessed from the error alone.
+COPY --from=pruner /app/db ./db
 RUN npx turbo run build --filter=@elimubora/api...
 # Drop devDependencies (typescript, jest, ts-node, ...) before shipping —
 # nothing past this point needs them, only the compiled dist/ output.
