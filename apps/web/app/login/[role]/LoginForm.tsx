@@ -1,7 +1,7 @@
 'use client';
 
+import { AuthError, login, MissingIdentityError } from '@netlify/identity';
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { GoogleLogo, MicrosoftLogo } from '../../../components/icons';
 import type { RoleConfig } from '../../../lib/roles';
 
@@ -19,7 +19,6 @@ type Stage = 'credentials' | 'mfa' | 'select_institution';
 type LoginFormRole = Omit<RoleConfig, 'icon'>;
 
 export function LoginForm({ role }: { role: LoginFormRole }) {
-  const router = useRouter();
   const [stage, setStage] = useState<Stage>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,32 +33,17 @@ export function LoginForm({ role }: { role: LoginFormRole }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password, tenantId })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? 'Something went wrong. Try again.');
-        return;
+      void tenantId;
+      await login(email.trim(), password);
+      window.location.href = '/dashboard';
+    } catch (error) {
+      if (error instanceof MissingIdentityError) {
+        setError('Authentication is not configured for this site.');
+      } else if (error instanceof AuthError) {
+        setError(error.status === 401 ? 'Invalid email or password.' : error.message);
+      } else {
+        setError('Could not reach the authentication service. Check your connection and try again.');
       }
-      if (data.status === 'authenticated') {
-        router.push('/dashboard');
-        return;
-      }
-      if (data.status === 'mfa_required') {
-        setMfaToken(data.mfaToken);
-        setStage('mfa');
-        return;
-      }
-      if (data.status === 'select_institution') {
-        setMemberships(data.memberships);
-        setStage('select_institution');
-        return;
-      }
-    } catch {
-      setError('Could not reach the server. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -81,12 +65,12 @@ export function LoginForm({ role }: { role: LoginFormRole }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ mfaToken, code: mfaCode })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ message: 'Authentication returned an invalid response.' }));
       if (!res.ok) {
         setError(data.message ?? 'Incorrect code. Try again.');
         return;
       }
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
     } finally {
