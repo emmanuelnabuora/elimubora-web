@@ -52,4 +52,12 @@ EXPOSE 3000
 # .next lives; node_modules still resolves via Node's normal up-the-tree
 # lookup to the hoisted workspace root.
 WORKDIR /app/apps/web
-CMD ["npx", "next", "start", "-p", "3000"]
+# Shell form (not exec-array form) so $PORT is actually substituted at
+# container start time. Cloud Run injects its own PORT (typically
+# 8080), overriding the ENV default above — the exec-array form used
+# here previously (["npx","next","start","-p","3000"]) hardcoded 3000
+# with no shell to expand a variable, so the server never listened on
+# whatever port Cloud Run actually probed. Found via a real deployment
+# failure ("failed to start and listen on the port... PORT=8080"), not
+# hypothetical.
+CMD npx next start -p ${PORT:-3000}
