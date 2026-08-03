@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SiteHeader } from '../../components/SiteHeader';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { LogoutButton } from './LogoutButton';
+
+const ADMIN_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
 
 /**
  * Confirms a real, working session — identity, active role, and every
@@ -52,6 +55,11 @@ export default async function DashboardPage() {
               </li>
             ))}
           </ul>
+          {ADMIN_ROLES.has(user.role) && (
+            <Link href="/admin" className="admin-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 'var(--eb-space-3)' }}>
+              Go to Admin Dashboard →
+            </Link>
+          )}
           <LogoutButton />
         </div>
       </div>
