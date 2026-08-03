@@ -152,6 +152,20 @@ d('Parent Portal (integration)', () => {
     expect(res.body).toEqual([expect.objectContaining({ studentId: childId })]);
   });
 
+  it('a linked parent sees their child, including the name (not just an admission number)', async () => {
+    // Real gap found building the Parent Dashboard frontend:
+    // listChildrenForGuardianUser previously returned no name at all,
+    // just admission_number/dob/gender/status -- unusable for a
+    // parent-facing UI that needs to show "your child" by name.
+    const children = await request(app.getHttpServer())
+      .get('/v1/parent-portal/children')
+      .set('authorization', `Bearer ${parentAToken}`)
+      .expect(200);
+    const child = children.body.find((c: { studentId: string }) => c.studentId === childId);
+    expect(child).toBeDefined();
+    expect(child.fullName).toBeTruthy();
+  });
+
   it('an unlinked parent sees no children and cannot read this child\u2019s records', async () => {
     const children = await request(app.getHttpServer())
       .get('/v1/parent-portal/children')

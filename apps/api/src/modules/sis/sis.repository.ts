@@ -147,26 +147,29 @@ export class SisRepository {
   }
 
   /** Reverse of isGuardianOf: given a guardian's own account, list their linked children in the current tenant. */
-  async listChildrenForGuardianUser(userId: string): Promise<StudentProfile[]> {
+  async listChildrenForGuardianUser(userId: string): Promise<Array<StudentProfile & { fullName: string }>> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{
         student_id: string;
+        full_name: string;
         admission_number: string;
         date_of_birth: Date | null;
         gender: 'male' | 'female' | null;
         status: StudentProfile['status'];
         enrolled_at: Date;
       }>(
-        `SELECT sp.student_id, sp.admission_number, sp.date_of_birth, sp.gender, sp.status, sp.enrolled_at
+        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender, sp.status, sp.enrolled_at
            FROM sis.student_profiles sp
            JOIN sis.student_guardians sg ON sg.student_id = sp.student_id
            JOIN sis.guardians g ON g.id = sg.guardian_id
+           JOIN core.users u ON u.id = sp.student_id
           WHERE g.user_id = $1 AND sp.tenant_id = core.current_tenant_id()
             AND sg.deleted_at IS NULL AND sp.deleted_at IS NULL`,
         [userId]
       );
       return rows.map((r) => ({
         studentId: r.student_id,
+        fullName: r.full_name,
         admissionNumber: r.admission_number,
         dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
         gender: r.gender,
