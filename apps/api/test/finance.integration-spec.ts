@@ -34,6 +34,7 @@ d('Finance (integration)', () => {
     syncVisibilityDelaySeconds: 0,
     publicWebUrl: 'http://localhost:3000',
   uploadsDir: './uploads-test',
+  corsAllowedOrigins: ['http://localhost:3000'],
     auth: {
       invitationTtlDays: 7,
       passwordResetTtlMinutes: 30,

@@ -39,6 +39,7 @@ d('Identity module (integration)', () => {
   syncVisibilityDelaySeconds: 0,
     publicWebUrl: 'http://localhost:3000',
   uploadsDir: './uploads-test',
+  corsAllowedOrigins: ['http://localhost:3000'],
     auth: {
       invitationTtlDays: 7,
       passwordResetTtlMinutes: 30,
@@ -80,6 +81,20 @@ d('Identity module (integration)', () => {
       .send({ email, fullName: 'Integration Teacher', password, tenantId, role: 'teacher' })
       .expect(201);
     expect(res.body.id).toBeDefined();
+  });
+
+  it('registering the same email again returns a clean 409, not a raw 500 with leaked DB internals', async () => {
+    // Found via Sprint 16 hardening: this exact path had never been
+    // exercised against the real HTTP layer before, and the Postgres
+    // unique_violation was bubbling up as an unhandled 500 exposing
+    // internal error shape (constraint name, table, driver stack).
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({ email, fullName: 'Someone Else Entirely', password, tenantId, role: 'learner' })
+      .expect(409);
+    expect(res.body.message).toBe('An account with this email already exists.');
+    expect(JSON.stringify(res.body)).not.toContain('users_email_key');
+    expect(JSON.stringify(res.body)).not.toContain('nbtinsert.c');
   });
 
   it('logs in and returns tokens plus memberships', async () => {

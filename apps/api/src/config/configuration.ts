@@ -26,6 +26,11 @@ const schema = z.object({
    *  deployment swaps FileStorageProvider for an S3/R2 implementation
    *  instead of relying on this path being durable across deploys. */
   UPLOADS_DIR: z.string().default('./uploads'),
+  /** Comma-separated list of origins allowed to call the API directly
+   *  cross-origin (e.g., a future PWA or mobile web client). The
+   *  Next.js BFF itself never needs this — it calls server-to-server,
+   *  which CORS doesn't govern. Defaults to just the web app's own origin. */
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
   INVITATION_TTL_DAYS: z.coerce.number().int().min(1).default(7),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).default(30),
   /** Open self-registration is a development convenience only. */
@@ -44,6 +49,7 @@ export interface AppConfig {
   syncVisibilityDelaySeconds: number;
   publicWebUrl: string;
   uploadsDir: string;
+  corsAllowedOrigins: string[];
   auth: {
     invitationTtlDays: number;
     passwordResetTtlMinutes: number;
@@ -76,6 +82,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     syncVisibilityDelaySeconds: v.SYNC_VISIBILITY_DELAY_SECONDS,
     publicWebUrl: v.PUBLIC_WEB_URL,
     uploadsDir: v.UPLOADS_DIR,
+    corsAllowedOrigins: v.CORS_ALLOWED_ORIGINS
+      ? v.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+      : [v.PUBLIC_WEB_URL],
     auth: {
       invitationTtlDays: v.INVITATION_TTL_DAYS,
       passwordResetTtlMinutes: v.PASSWORD_RESET_TTL_MINUTES,

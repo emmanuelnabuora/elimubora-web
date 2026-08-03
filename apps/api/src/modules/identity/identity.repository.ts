@@ -1,8 +1,20 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { DatabaseService } from '../../core/database/database.service';
 import type { MembershipRecord, MembershipRole, UserRecord } from './identity.types';
+
+/** Narrow, defensive check for a Postgres unique_violation (23505) on a
+ *  specific named constraint — avoids misclassifying an unrelated error
+ *  that happens to also be a 23505 on some other constraint. */
+function isUniqueViolation(err: unknown, constraintName: string): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505' &&
+    (err as { constraint?: string }).constraint === constraintName
+  );
+}
 
 interface UserRow extends Record<string, unknown> {
   id: string;
@@ -127,11 +139,24 @@ export class IdentityRepository {
       // and a brand-new user is not yet visible to anyone. Client-side
       // ids are also the ADR-003 (offline-first) identifier strategy.
       const userId = randomUUID();
-      await client.query(
-        `INSERT INTO core.users (id, email, full_name, password_hash)
-         VALUES ($1, $2, $3, $4)`,
-        [userId, input.email, input.fullName, input.passwordHash]
-      );
+      try {
+        await client.query(
+          `INSERT INTO core.users (id, email, full_name, password_hash)
+           VALUES ($1, $2, $3, $4)`,
+          [userId, input.email, input.fullName, input.passwordHash]
+        );
+      } catch (err) {
+        // 23505 = unique_violation. Caught specifically on the email
+        // constraint so a genuine duplicate-registration attempt gets a
+        // clean, expected 409 rather than an unhandled 500 that also
+        // exposes raw Postgres error internals to the client (found via
+        // Sprint 16 hardening — a duplicate-email registration attempt
+        // had never been exercised against the real HTTP layer before).
+        if (isUniqueViolation(err, 'users_email_key')) {
+          throw new ConflictException('An account with this email already exists.');
+        }
+        throw err;
+      }
       await client.query(
         `INSERT INTO core.memberships (user_id, tenant_id, role)
          VALUES ($1, core.current_tenant_id(), $2)`,
