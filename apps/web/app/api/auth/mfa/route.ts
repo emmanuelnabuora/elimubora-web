@@ -2,21 +2,48 @@ import { NextResponse } from 'next/server';
 import { ACCESS_COOKIE, API_BASE_URL, REFRESH_COOKIE, cookieOptions } from '../../../../lib/auth-cookies';
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Malformed request body.' }, { status: 400 });
+  }
 
-  const upstream = await fetch(`${API_BASE_URL}/v1/auth/mfa/verify`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const data = await upstream.json();
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${API_BASE_URL}/v1/auth/mfa/verify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (err) {
+    console.error('MFA route: failed to reach upstream API', API_BASE_URL, err);
+    return NextResponse.json(
+      { message: 'Could not reach the authentication service. Please try again shortly.' },
+      { status: 502 }
+    );
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = await upstream.json();
+  } catch (err) {
+    console.error('MFA route: upstream response was not valid JSON', err);
+    return NextResponse.json(
+      { message: 'The authentication service returned an unexpected response.' },
+      { status: 502 }
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
   const res = NextResponse.json({ status: 'authenticated' });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, cookieOptions(data.expiresInSeconds));
-  res.cookies.set(REFRESH_COOKIE, data.refreshToken, cookieOptions(60 * 60 * 24 * 30));
+  const accessToken = data.accessToken as string;
+  const refreshToken = data.refreshToken as string;
+  const expiresInSeconds = data.expiresInSeconds as number;
+  res.cookies.set(ACCESS_COOKIE, accessToken, cookieOptions(expiresInSeconds));
+  res.cookies.set(REFRESH_COOKIE, refreshToken, cookieOptions(60 * 60 * 24 * 30));
   return res;
 }
