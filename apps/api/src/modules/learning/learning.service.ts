@@ -81,6 +81,10 @@ export class LearningService {
     return this.repo.listCourses(filter);
   }
 
+  listMyEnrolledCourses(user: AuthenticatedUser): Promise<Course[]> {
+    return this.repo.listEnrolledCourses(user.userId);
+  }
+
   async updateCourse(user: AuthenticatedUser, id: string, dto: UpdateCourseDto): Promise<Course> {
     await this.requireCourseTeacher(id, user);
     const updated = await this.repo.updateCourse(id, dto);

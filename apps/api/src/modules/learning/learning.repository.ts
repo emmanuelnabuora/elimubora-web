@@ -192,6 +192,28 @@ export class LearningRepository {
     });
   }
 
+  /**
+   * A student's own enrolled courses — the existing isEnrolled() only
+   * checks one course at a time, and listCourses() returns every
+   * course in the tenant regardless of enrollment. A real gap for the
+   * student dashboard: "what am I actually taking" has no answer
+   * without this.
+   */
+  async listEnrolledCourses(userId: string): Promise<Course[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<CourseRow>(
+        `SELECT c.* FROM learning.courses c
+           JOIN learning.enrollments e ON e.course_id = c.id
+          WHERE e.user_id = $1 AND e.course_role = 'learner'
+            AND e.tenant_id = core.current_tenant_id() AND e.deleted_at IS NULL
+            AND c.deleted_at IS NULL
+          ORDER BY c.created_at DESC`,
+        [userId]
+      );
+      return rows.map(toCourse);
+    });
+  }
+
   async updateCourse(
     id: string,
     patch: { title?: string; description?: string; status?: string }

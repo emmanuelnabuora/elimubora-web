@@ -65,6 +65,11 @@ export default async function DashboardPage() {
               Go to Teacher Dashboard →
             </Link>
           )}
+          {user.role === 'learner' && (
+            <Link href="/student" className="admin-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 'var(--eb-space-3)' }}>
+              Go to Student Dashboard →
+            </Link>
+          )}
           <LogoutButton />
         </div>
       </div>

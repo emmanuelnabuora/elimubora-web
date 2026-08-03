@@ -48,6 +48,11 @@ export class CoursesController {
     return this.learning.listCourses({ gradeLevel, status });
   }
 
+  @Get('mine')
+  mine(@CurrentUser() user: AuthenticatedUser) {
+    return this.learning.listMyEnrolledCourses(user);
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.learning.getCourse(id);

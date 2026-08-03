@@ -195,6 +195,30 @@ d('Learning platform + sync engine (integration)', () => {
       .expect(201);
   });
 
+  it('GET /courses/mine returns only what this learner is actually enrolled in', async () => {
+    // Also proves the route-ordering fix: 'mine' is a literal segment
+    // registered before ':id', so it must not be swallowed by the
+    // UUID param route and fail with a parse error.
+    const res = await request(app.getHttpServer())
+      .get('/v1/courses/mine')
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(200);
+    expect(res.body.find((c: { id: string }) => c.id === courseId)).toBeDefined();
+
+    // A second, unrelated course the learner was never enrolled in
+    // must not appear, even though it exists in the same tenant.
+    const otherCourse = await request(app.getHttpServer())
+      .post('/v1/courses')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ title: 'Grade 4 Not Mine', learningArea: 'Science', gradeLevel: 'G4' })
+      .expect(201);
+    const res2 = await request(app.getHttpServer())
+      .get('/v1/courses/mine')
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(200);
+    expect(res2.body.find((c: { id: string }) => c.id === otherCourse.body.id)).toBeUndefined();
+  });
+
   it('an unenrolled action is rejected before an enrolled one succeeds', async () => {
     // Sanity: assignment exists but learner isn't enrolled yet on a SECOND
     // course to prove the check is per-course, not global.
