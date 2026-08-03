@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '../../../components/SiteHeader';
 import { CheckIcon } from '../../../components/icons';
@@ -19,6 +20,9 @@ export default async function LoginPage({ params }: { params: Promise<{ role: st
       <SiteHeader showHelp={false} />
       <div className="auth-split">
         <section className="auth-illustration" style={{ ['--door-accent' as string]: role.accent }}>
+          <Link href="/login" className="auth-change-role">
+            &larr; Choose a different role
+          </Link>
           <span className="auth-illustration-badge">
             <Icon width={28} height={28} />
           </span>
