@@ -259,4 +259,33 @@ d('Finance (integration)', () => {
     const firstInvoice = res.body.find((i: { id: string }) => i.id === invoiceId);
     expect(firstInvoice.payments).toHaveLength(2);
   });
+
+  it('GET /fee-structures lists tenant-scoped fee structures, admin-only', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/fee-structures')
+      .set('authorization', `Bearer ${parentToken}`)
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/fee-structures')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const structure = res.body.find((s: { id: string }) => s.id === feeStructureId);
+    expect(structure).toBeDefined();
+  });
+
+  it('GET /invoices lists every invoice tenant-wide with the student name, admin-only', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/invoices')
+      .set('authorization', `Bearer ${parentToken}`)
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/invoices')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const invoice = res.body.find((i: { id: string }) => i.id === invoiceId);
+    expect(invoice).toBeDefined();
+    expect(invoice.studentName).toBeTruthy();
+  });
 });

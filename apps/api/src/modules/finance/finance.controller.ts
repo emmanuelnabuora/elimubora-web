@@ -28,6 +28,11 @@ export class FeeStructuresController {
   ) {
     return this.service.createFeeStructure(user, dto);
   }
+
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listFeeStructures(user);
+  }
 }
 
 @Controller('invoices')
@@ -40,6 +45,11 @@ export class InvoicesController {
     @Body(new ZodValidationPipe(createInvoiceSchema)) dto: CreateInvoiceDto
   ) {
     return this.service.createInvoice(user, dto);
+  }
+
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listInvoices(user);
   }
 
   @Get(':id')

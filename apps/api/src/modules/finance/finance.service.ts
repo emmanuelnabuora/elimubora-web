@@ -26,9 +26,19 @@ export class FinanceService {
     return this.repo.createFeeStructure(dto);
   }
 
+  listFeeStructures(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listFeeStructures();
+  }
+
   async createInvoice(user: AuthenticatedUser, dto: CreateInvoiceDto): Promise<Invoice> {
     this.requireAdmin(user);
     return this.repo.createInvoice(dto);
+  }
+
+  listInvoices(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listInvoices();
   }
 
   async getInvoice(id: string): Promise<Invoice> {

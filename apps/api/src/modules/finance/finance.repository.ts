@@ -118,6 +118,18 @@ export class FinanceRepository {
     });
   }
 
+  /** All fee structures in the tenant — needed for the admin fees overview and the "create invoice" dropdown. */
+  async listFeeStructures(): Promise<FeeStructure[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<FeeStructureRow>(
+        `SELECT * FROM finance.fee_structures
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY academic_year DESC, term, grade_level`
+      );
+      return rows.map(toFeeStructure);
+    });
+  }
+
   // ---------------- invoices ----------------
 
   async createInvoice(input: {
@@ -186,6 +198,25 @@ export class FinanceRepository {
         [studentId]
       );
       return rows.map(toInvoice);
+    });
+  }
+
+  /**
+   * Tenant-wide invoice list — the existing method above is
+   * per-student, which has no way to answer "what's the overall fee
+   * picture right now" for an admin. Joined with core.users since
+   * Invoice itself only carries studentId, not a name.
+   */
+  async listInvoices(): Promise<Array<Invoice & { studentName: string }>> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<InvoiceRow & { student_name: string }>(
+        `SELECT i.*, u.full_name AS student_name
+           FROM finance.invoices i
+           JOIN core.users u ON u.id = i.student_id
+          WHERE i.tenant_id = core.current_tenant_id() AND i.deleted_at IS NULL
+          ORDER BY i.academic_year DESC, i.term DESC, u.full_name`
+      );
+      return rows.map((r) => ({ ...toInvoice(r), studentName: r.student_name }));
     });
   }
 
