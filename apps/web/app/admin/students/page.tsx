@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { AddStudentForm } from './AddStudentForm';
 
@@ -50,7 +51,11 @@ export default async function StudentsPage() {
             <tbody>
               {students.map((s) => (
                 <tr key={s.studentId}>
-                  <td>{s.fullName}</td>
+                  <td>
+                    <Link href={`/admin/students/${s.studentId}`} style={{ color: 'var(--eb-primary)', fontWeight: 600 }}>
+                      {s.fullName}
+                    </Link>
+                  </td>
                   <td>{s.admissionNumber}</td>
                   <td>{s.className ?? '—'}</td>
                   <td>{s.gradeLevel ?? '—'}</td>

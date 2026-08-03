@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 
-const INVITABLE_ROLES = ['teacher', 'school_admin', 'principal'] as const;
+const INVITABLE_ROLES = ['teacher', 'school_admin', 'principal', 'parent'] as const;
 
 export function InviteStaffForm() {
   const router = useRouter();
