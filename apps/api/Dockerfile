@@ -23,6 +23,13 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
+# turbo prune's output never includes root-level files that live
+# outside any single workspace directory — but every workspace's
+# tsconfig.json extends this one via a relative "../../" path, so the
+# build fails with TS5083 (cannot read tsconfig.base.json) without it.
+# Confirmed by actually running the build and reading the real error,
+# not guessed.
+COPY --from=pruner /app/tsconfig.base.json .
 RUN npx turbo run build --filter=@elimubora/api...
 # Drop devDependencies (typescript, jest, ts-node, ...) before shipping —
 # nothing past this point needs them, only the compiled dist/ output.

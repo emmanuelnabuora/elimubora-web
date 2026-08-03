@@ -22,6 +22,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
+# See apps/api/Dockerfile for why this line is needed — turbo prune
+# never includes root-level files outside any single workspace, but
+# every workspace's tsconfig.json extends this one.
+COPY --from=pruner /app/tsconfig.base.json .
 
 # IMPORTANT Next.js detail, easy to get wrong: NEXT_PUBLIC_* variables
 # are inlined into the client-side JavaScript bundle at BUILD time, not
