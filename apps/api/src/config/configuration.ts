@@ -8,8 +8,19 @@ import { z } from 'zod';
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
-  DATABASE_URL: z.string().url(),
-  WORKER_DATABASE_URL: z.string().url().optional(),
+  // Deliberately not z.string().url(): Cloud SQL's Unix-socket
+  // connection format (postgres://user:pass@/db?host=/cloudsql/...)
+  // has no host between '@' and '/' by design — the actual socket
+  // path lives in the ?host= query param instead. This is a valid,
+  // well-established PostgreSQL convention that pg's own driver
+  // parses correctly, but fails the WHATWG URL spec z.string().url()
+  // enforces. Found via a real Cloud Run deployment failure — local
+  // dev never surfaces this since it always uses a real hostname.
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'Must be a postgres:// connection string'),
+  WORKER_DATABASE_URL: z
+    .string()
+    .regex(/^postgres(ql)?:\/\//, 'Must be a postgres:// connection string')
+    .optional(),
   OUTBOX_POLL_MS: z.coerce.number().int().min(100).default(1000),
   /** See ADR-007: bounds the out-of-order commit window of core.change_log's
    *  global sequence. Lower in tests where writes and pulls happen milliseconds
