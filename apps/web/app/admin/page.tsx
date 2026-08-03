@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { Users, UserCog, Wallet, ClipboardCheck, GraduationCap, PiggyBank } from 'lucide-react';
 import { apiFetch } from '../../lib/api-client';
-import { StudentsByGradeChart } from './StudentsByGradeChart';
-import { FeeCollectionDonut } from './FeeCollectionDonut';
+import { StudentsByGradeChart } from '../../components/StudentsByGradeChart';
+import { FeeCollectionDonut } from '../../components/FeeCollectionDonut';
 
 interface StudentListItem {
   studentId: string;

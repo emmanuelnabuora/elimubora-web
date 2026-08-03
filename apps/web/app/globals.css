@@ -927,6 +927,19 @@ a { color: inherit; text-decoration: none; }
   --sa-orange-tint: #fff7e9;
   --sa-red-tint: #fff1f2;
 
+  /* Existing inline styles across Teacher/Student/Parent reference
+     these color tokens directly (not just via class names) — spacing
+     and font tokens (--eb-space-*, --eb-font-*, --eb-radius-*) are
+     theme-agnostic and left alone, but these color ones need to
+     resolve to the new palette here too, or text/backgrounds would
+     mismatch the new light workspace. */
+  --eb-bg: var(--sa-bg);
+  --eb-fg: var(--sa-text);
+  --eb-fg-muted: var(--sa-text-muted);
+  --eb-line: var(--sa-border);
+  --eb-primary: var(--sa-purple);
+  --eb-green-100: var(--sa-purple-tint);
+
   min-height: 100dvh;
   display: flex;
   background: var(--sa-bg);
@@ -1263,3 +1276,10 @@ a { color: inherit; text-decoration: none; }
 .sa-shell .auth-error { font-size: 13px; color: var(--sa-red); background: var(--sa-red-tint); border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; }
 .sa-shell .dashboard-subhead { font-size: 13px; margin: 0 0 8px; }
 .sa-shell .admin-nav-link { font-size: 13px; font-weight: 600; color: var(--sa-purple); }
+
+.sa-shell .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 700px) { .sa-shell .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.sa-shell .kpi-card { background: var(--sa-purple-tint); border: 1px solid transparent; border-radius: 14px; padding: 16px; }
+.sa-shell .kpi-label { font-size: 12px; font-weight: 600; color: var(--sa-text-muted); margin: 0 0 6px; }
+.sa-shell .kpi-value { font-family: var(--eb-font-display); font-weight: 700; font-size: 26px; margin: 0; color: var(--sa-text); }
+.sa-shell .kpi-sub { font-size: 12px; color: var(--sa-text-muted); margin: 4px 0 0; }
