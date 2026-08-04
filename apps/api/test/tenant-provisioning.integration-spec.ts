@@ -209,4 +209,44 @@ d('Tenant provisioning (integration)', () => {
     const orphanCheck = await admin.query(`SELECT id FROM core.tenants WHERE slug = $1`, [failingSlug]);
     expect(orphanCheck.rows).toHaveLength(0);
   });
+
+  it('onboarding a county or ministry tenant assigns the correct role, not the school_admin default', async () => {
+    // A real bug found while building the government dashboard: this
+    // was hardcoded to school_admin regardless of kind, so a county
+    // or ministry tenant's first account couldn't actually pass the
+    // government module's own READ_ROLES/REFRESH_ROLES checks.
+    const countyRes = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Nairobi County Education Office',
+        slug: `nairobi-county-${stamp}`,
+        kind: 'county',
+        countyCode: '047',
+        adminEmail: `county-officer-${stamp}@nairobi.go.ke`,
+        adminFullName: 'County Education Officer',
+        adminPassword: password
+      })
+      .expect(201);
+    expect(countyRes.body.adminRole).toBe('county_officer');
+    const countyLogin = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ email: `county-officer-${stamp}@nairobi.go.ke`, password })
+      .expect(200);
+    expect(countyLogin.body.memberships[0].role).toBe('county_officer');
+
+    const ministryRes = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Ministry of Education HQ',
+        slug: `moe-hq-${stamp}`,
+        kind: 'ministry',
+        adminEmail: `ministry-official-${stamp}@education.go.ke`,
+        adminFullName: 'Ministry Official',
+        adminPassword: password
+      })
+      .expect(201);
+    expect(ministryRes.body.adminRole).toBe('ministry_official');
+  });
 });

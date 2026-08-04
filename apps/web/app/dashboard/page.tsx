@@ -75,6 +75,11 @@ export default async function DashboardPage() {
               Go to Parent Dashboard →
             </Link>
           )}
+          {(user.role === 'county_officer' || user.role === 'ministry_official') && (
+            <Link href="/government" className="admin-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 'var(--eb-space-3)' }}>
+              Go to National Overview →
+            </Link>
+          )}
           <LogoutButton />
         </div>
       </div>

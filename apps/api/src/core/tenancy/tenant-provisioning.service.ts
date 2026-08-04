@@ -18,6 +18,7 @@ function isUniqueViolation(err: unknown, constraintName: string): boolean {
 export interface ProvisionedTenant {
   tenantId: string;
   adminUserId: string;
+  adminRole: string;
 }
 
 /**
@@ -54,6 +55,22 @@ export class TenantProvisioningService {
     const tenantId = randomUUID();
     const adminUserId = randomUUID();
 
+    // Real gap found while building the government dashboard's live
+    // verification: this used to be hardcoded to 'school_admin'
+    // regardless of dto.kind, so onboarding a county or ministry
+    // tenant through this endpoint would still create a school_admin
+    // for it — wrong role for that tenant kind, and that account
+    // wouldn't actually satisfy the government module's own
+    // READ_ROLES/REFRESH_ROLES checks. university/tvet/partner have
+    // no dedicated membership role in the system yet; school_admin
+    // remains the closest fit for those until one exists — a
+    // documented simplification, not an oversight.
+    const roleForKind: Record<string, string> = {
+      county: 'county_officer',
+      ministry: 'ministry_official'
+    };
+    const adminRole = roleForKind[dto.kind] ?? 'school_admin';
+
     try {
       await this.db.withContext({ tenantId, actorId: actor.userId }, async (client) => {
         await client.query(
@@ -66,8 +83,8 @@ export class TenantProvisioningService {
         );
         await client.query(
           `INSERT INTO core.memberships (user_id, tenant_id, role, status)
-           VALUES ($1, core.current_tenant_id(), 'school_admin', 'active')`,
-          [adminUserId]
+           VALUES ($1, core.current_tenant_id(), $2, 'active')`,
+          [adminUserId, adminRole]
         );
         await this.audit.record(client, {
           action: 'tenant.onboarded',
@@ -86,6 +103,6 @@ export class TenantProvisioningService {
       throw err;
     }
 
-    return { tenantId, adminUserId };
+    return { tenantId, adminUserId, adminRole };
   }
 }
