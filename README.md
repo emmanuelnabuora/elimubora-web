@@ -81,6 +81,10 @@ end-to-end for the first time in the project.
                                               /analytics/finance/collection-summary /analytics/early-warning
     Sprint 15 Mobile Apps                    /mobile/devices, /mobile/uploads, /mobile/attendance-qr/*
                                               (offline sync reuses Sprint 4's /v1/sync/pull|push as-is)
+    Sprint 16 Production Hardening           Rate limiting (@nestjs/throttler: 100/min default, 5/min on
+                                              login/mfa/password-reset/register), helmet security headers,
+                                              compression, CORS (see CORS_ALLOWED_ORIGINS env var), a global
+                                              exception filter. See docs/adr/ADR-016-production-hardening.md.
 
 `apps/api/src/composition/` is a permitted exception to "modules never
 import each other" — read-only cross-module aggregation for dashboards

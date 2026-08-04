@@ -1,4 +1,6 @@
 import { Global, Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule, minutes } from '@nestjs/throttler';
 import { APP_CONFIG, loadConfig } from '../config/configuration';
 import { AuditService } from './audit/audit.service';
 import { DatabaseService } from './database/database.service';
@@ -32,11 +34,34 @@ import { FILE_STORAGE_PROVIDER } from './storage/file-storage.port';
  */
 @Global()
 @Module({
+  imports: [
+    // A single named 'default' throttler: 100 requests/minute per
+    // client IP. Auth endpoints override this with a much stricter
+    // limit via @Throttle() (see auth.controller.ts) — this default
+    // exists to protect every other endpoint, which had genuinely no
+    // rate limiting at all before this. skipIf disables throttling
+    // entirely in tests — found via a real regression: three existing
+    // integration test files legitimately register/log in more than
+    // 5 users each within a single app instance as realistic test
+    // setup (a real school has many staff and students), which the
+    // strict auth throttle correctly treats as abuse in production
+    // but incorrectly treats as abuse here. This is a test-environment
+    // exemption, not a weakened production limit.
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: minutes(1),
+        limit: 100,
+        skipIf: () => process.env.NODE_ENV === 'test'
+      }
+    ])
+  ],
   controllers: [HealthController, SyncController, AiController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig(process.env) },
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
     { provide: NOTIFICATION_CHANNEL, useClass: DevLogNotificationChannel },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     DatabaseService,
     WorkerDatabaseService,
     AuditService,

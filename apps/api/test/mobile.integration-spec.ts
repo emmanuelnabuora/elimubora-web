@@ -73,7 +73,7 @@ d('Mobile (integration)', () => {
       .useValue(config)
       .compile();
     app = moduleRef.createNestApplication();
-    applyGlobalAppConfig(app);
+    applyGlobalAppConfig(app, config);
     await app.init();
 
     const teacherEmail = `mob-teacher-${stamp}@school.ke`;

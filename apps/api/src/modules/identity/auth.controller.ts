@@ -7,6 +7,7 @@ import {
   Inject,
   Post
 } from '@nestjs/common';
+import { Throttle, minutes } from '@nestjs/throttler';
 import { APP_CONFIG, type AppConfig } from '../../config/configuration';
 import { CurrentUser, Public } from './auth.decorators';
 import {
@@ -36,6 +37,13 @@ import type { AuthenticatedUser } from './identity.types';
 import { PasswordService } from './password.service';
 import { ZodValidationPipe } from './zod-validation.pipe';
 
+// Login, MFA, password reset, and registration are the classic
+// brute-force/enumeration targets — 5/minute is tight enough to stop
+// automated guessing while still allowing a real user who mistypes a
+// password a couple of times. Every other endpoint uses CoreModule's
+// much looser 'default' throttler (100/minute) instead.
+const STRICT_AUTH_THROTTLE = { default: { limit: 5, ttl: minutes(1) } };
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -47,6 +55,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
   @Post('login')
   @HttpCode(200)
   login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
@@ -54,6 +63,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
   @Post('mfa/verify')
   @HttpCode(200)
   verifyMfa(@Body(new ZodValidationPipe(mfaVerifySchema)) dto: MfaVerifyDto) {
@@ -110,6 +120,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
   @Post('password/forgot')
   @HttpCode(204)
   async forgotPassword(
@@ -119,6 +130,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
   @Post('password/reset')
   @HttpCode(204)
   async resetPassword(
@@ -133,6 +145,7 @@ export class AuthController {
    * Management); the config loader refuses this flag in production.
    */
   @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
   @Post('register')
   async register(@Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto) {
     if (!this.config.auth.allowOpenRegistration) {

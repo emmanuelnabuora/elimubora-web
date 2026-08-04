@@ -10,7 +10,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.enableShutdownHooks();
-  applyGlobalAppConfig(app);
+  applyGlobalAppConfig(app, config);
 
   await app.listen(config.port);
   new Logger('Bootstrap').log(`ElimuBora API listening on :${config.port} (${config.nodeEnv})`);
