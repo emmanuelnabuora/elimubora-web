@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, CalendarCheck, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, CalendarCheck, GraduationCap, NotebookPen } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -9,7 +9,8 @@ const SECTIONS: SaNavSection[] = [
     items: [
       { href: '/teacher', label: 'Overview', icon: LayoutDashboard },
       { href: '/teacher/attendance', label: 'Attendance', icon: CalendarCheck },
-      { href: '/teacher/grading', label: 'Grading', icon: GraduationCap }
+      { href: '/teacher/grading', label: 'Grading', icon: GraduationCap },
+      { href: '/teacher/lesson-plans', label: 'Lesson Plans', icon: NotebookPen }
     ]
   }
 ];
