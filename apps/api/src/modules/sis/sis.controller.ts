@@ -132,6 +132,11 @@ export class StudentsController {
     return this.sis.listStudents(user);
   }
 
+  @Get('me')
+  me(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.getMyProfile(user);
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.sis.getStudentProfile(id);

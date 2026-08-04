@@ -126,6 +126,15 @@ export class SisService {
     return this.repo.listStudents();
   }
 
+  async getMyProfile(user: AuthenticatedUser) {
+    if (user.role !== 'learner') {
+      throw new ForbiddenException('Only a student can view their own profile through this endpoint');
+    }
+    const profile = await this.repo.getMyProfile(user.userId);
+    if (!profile) throw new NotFoundException('Student profile not found');
+    return profile;
+  }
+
   // ---------------- enrollment (the cross-cutting orchestration) ----------------
 
   /**

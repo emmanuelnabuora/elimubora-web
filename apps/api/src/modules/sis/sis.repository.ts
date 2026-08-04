@@ -437,6 +437,62 @@ export class SisRepository {
     });
   }
 
+  /**
+   * A learner's own profile — a real gap: listStudents() above is
+   * admin-only, and there was previously no self-service equivalent
+   * at all. Same query shape (the join to class_allocations/
+   * class_streams is what "My Timetable" needs classStreamId for),
+   * filtered to one student rather than the whole tenant.
+   */
+  async getMyProfile(studentId: string): Promise<{
+    studentId: string;
+    fullName: string;
+    admissionNumber: string;
+    dateOfBirth: string | null;
+    gender: 'male' | 'female' | null;
+    status: StudentProfile['status'];
+    classStreamId: string | null;
+    className: string | null;
+    gradeLevel: string | null;
+  } | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{
+        student_id: string;
+        full_name: string;
+        admission_number: string;
+        date_of_birth: Date | null;
+        gender: 'male' | 'female' | null;
+        status: StudentProfile['status'];
+        class_stream_id: string | null;
+        class_name: string | null;
+        grade_level: string | null;
+      }>(
+        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender, sp.status,
+                ca.class_stream_id, cs.name AS class_name, cs.grade_level
+           FROM sis.student_profiles sp
+           JOIN core.users u ON u.id = sp.student_id
+           LEFT JOIN sis.class_allocations ca
+             ON ca.student_id = sp.student_id AND ca.status = 'active' AND ca.deleted_at IS NULL
+           LEFT JOIN sis.class_streams cs ON cs.id = ca.class_stream_id
+          WHERE sp.student_id = $1 AND sp.tenant_id = core.current_tenant_id() AND sp.deleted_at IS NULL`,
+        [studentId]
+      );
+      const r = rows[0];
+      if (!r) return null;
+      return {
+        studentId: r.student_id,
+        fullName: r.full_name,
+        admissionNumber: r.admission_number,
+        dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
+        gender: r.gender,
+        status: r.status,
+        classStreamId: r.class_stream_id,
+        className: r.class_name,
+        gradeLevel: r.grade_level
+      };
+    });
+  }
+
   async allocateToClass(input: {
     studentId: string;
     classStreamId: string;

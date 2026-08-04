@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { Client } from 'pg';
 import request from 'supertest';
+import argon2 from 'argon2';
 import { AppModule } from '../src/app.module';
 import { APP_CONFIG, type AppConfig } from '../src/config/configuration';
 
@@ -436,5 +437,120 @@ d('Student Information System (integration)', () => {
     const decided = afterDecision.body.find((a: { id: string }) => a.id === app1.body.id);
     expect(decided.status).toBe('admitted');
     expect(decided.notes).toBe('Strong interview');
+  });
+
+  it('GET /students/me — a learner sees their own profile, and no one else\u2019s', async () => {
+    const student = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Self Service Student', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+      .expect(201);
+    const studentId = student.body.studentId;
+
+    // enrollStudent provisions a shadow account with an unusable
+    // random password (core/identity/user-provisioning.service.ts) —
+    // by design, nothing about enrollment alone lets a student log in
+    // as themselves. There is currently no real, working flow that
+    // gives an enrolled student actual credentials (their placeholder
+    // email isn't real, so even password-reset has nowhere to send a
+    // link) — a genuine, separate gap from what this test covers.
+    // Setting a real password hash directly here proves the
+    // GET /students/me endpoint's own logic is correct once an
+    // account legitimately has credentials, the same way testing
+    // guardian-linking didn't require also re-solving "how does a
+    // parent get invited" from scratch.
+    const realPasswordHash = await argon2.hash('A-genuinely-long-password-1', {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1
+    });
+    await db.query(`UPDATE core.users SET password_hash = $1 WHERE id = $2`, [realPasswordHash, studentId]);
+
+    // The shadow account's email is a placeholder
+    // (shadow.<uuid>@no-login.elimubora.internal) — fetch it directly
+    // rather than guess, since the enrollment response doesn't return it.
+    const shadowEmailRow = await db.query(`SELECT email FROM core.users WHERE id = $1`, [studentId]);
+    const shadowEmail = shadowEmailRow.rows[0].email;
+
+    const studentToken = (
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email: shadowEmail, password: 'A-genuinely-long-password-1' })
+        .expect(200)
+    ).body.tokens.accessToken;
+
+    const me = await request(app.getHttpServer())
+      .get('/v1/students/me')
+      .set('authorization', `Bearer ${studentToken}`)
+      .expect(200);
+    expect(me.body.studentId).toBe(studentId);
+    expect(me.body.fullName).toBe('Self Service Student');
+    expect(me.body.gradeLevel).toBe('G4');
+    expect(me.body.classStreamId).toBe(classStreamId);
+    expect(me.body.className).toBe('Grade 4 Blue');
+
+    // A non-learner (staff) hitting the self-service route gets a
+    // clean 403, not someone else's data and not a crash.
+    await request(app.getHttpServer())
+      .get('/v1/students/me')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+  });
+
+  it('GET /announcements — staff sees everything, a learner sees whole-school plus only their own grade', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ title: 'Whole school notice', body: 'Applies to everyone.' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ title: 'Grade 4 notice', body: 'Just grade 4.', gradeLevel: 'G4' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ title: 'Grade 9 notice', body: 'A different grade entirely.', gradeLevel: 'G9' })
+      .expect(201);
+
+    const staffView = await request(app.getHttpServer())
+      .get('/v1/announcements')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const staffTitles = staffView.body.map((a: { title: string }) => a.title);
+    expect(staffTitles).toEqual(
+      expect.arrayContaining(['Whole school notice', 'Grade 4 notice', 'Grade 9 notice'])
+    );
+
+    const g4Student = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Announcements Test Student', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+      .expect(201);
+    const pw = await argon2.hash('A-genuinely-long-password-1', {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1
+    });
+    await db.query(`UPDATE core.users SET password_hash = $1 WHERE id = $2`, [pw, g4Student.body.studentId]);
+    const emailRow = await db.query(`SELECT email FROM core.users WHERE id = $1`, [g4Student.body.studentId]);
+    const learnerToken = (
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email: emailRow.rows[0].email, password: 'A-genuinely-long-password-1' })
+        .expect(200)
+    ).body.tokens.accessToken;
+
+    const learnerView = await request(app.getHttpServer())
+      .get('/v1/announcements')
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(200);
+    const learnerTitles = learnerView.body.map((a: { title: string }) => a.title);
+    expect(learnerTitles).toContain('Whole school notice');
+    expect(learnerTitles).toContain('Grade 4 notice');
+    expect(learnerTitles).not.toContain('Grade 9 notice');
   });
 });

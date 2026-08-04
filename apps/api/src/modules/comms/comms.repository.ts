@@ -61,4 +61,18 @@ export class CommsRepository {
       return rows.map(toAnnouncement);
     });
   }
+
+  /** Every announcement in the tenant — the staff-facing view (a teacher or admin has no single "grade" to filter by, unlike a learner or a guardian's specific children). */
+  async listAll(limit = 50): Promise<Announcement[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<Row>(
+        `SELECT * FROM comms.announcements
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY created_at DESC
+          LIMIT $1`,
+        [limit]
+      );
+      return rows.map(toAnnouncement);
+    });
+  }
 }
