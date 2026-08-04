@@ -126,6 +126,25 @@ d('Teacher Portal (integration)', () => {
       .expect(403);
   });
 
+  it('a real gap closed: an unrelated learner account cannot read another student\u2019s attendance, class-wide or individually', async () => {
+    // Previously neither GET route had ANY authorization check beyond
+    // being authenticated -- this proves the fix actually blocks
+    // access, not just that it compiles. learnerAcctEmail's account
+    // has no relationship at all to `learnerId` (a separate SIS
+    // student profile) -- exactly the case that was silently allowed
+    // before.
+    const learnerToken = await login(learnerAcctEmail);
+    await request(app.getHttpServer())
+      .get(`/v1/attendance/class/${classStreamId}`)
+      .query({ date: '2026-07-29' })
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/v1/attendance/learner/${learnerId}`)
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(403);
+  });
+
   it('marks attendance synchronously', async () => {
     const res = await request(app.getHttpServer())
       .post('/v1/attendance')

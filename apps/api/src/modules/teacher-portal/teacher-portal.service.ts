@@ -35,11 +35,39 @@ export class TeacherPortalService {
     return this.repo.markAttendance({ ...dto, recordedBy: user.userId });
   }
 
-  listAttendanceForClass(classStreamId: string, date: string): Promise<AttendanceRecord[]> {
+  /**
+   * Class-wide attendance is a roster of every student in that class
+   * on a given day — staff-only. Unlike listAttendanceForLearner
+   * below, there's no sensible "self" case here: no individual
+   * student or guardian has a legitimate reason to see everyone
+   * else's attendance for the day, only their own.
+   */
+  listAttendanceForClass(user: AuthenticatedUser, classStreamId: string, date: string): Promise<AttendanceRecord[]> {
+    this.requireStaff(user);
     return this.repo.listAttendanceForClassOnDate(classStreamId, date);
   }
 
-  listAttendanceForLearner(learnerId: string): Promise<AttendanceRecord[]> {
+  /**
+   * A real gap closed here: this method (and the route calling it)
+   * previously had NO authorization check at all beyond being
+   * authenticated — any tenant member could view any other learner's
+   * attendance simply by knowing their user id. Allows staff (any
+   * role, matching markAttendance's own coarse-grained staff check)
+   * or the learner viewing their own record. Deliberately does NOT
+   * add a guardian case here: ParentPortalController already has its
+   * own, separately and correctly guarded path
+   * (GET /parent-portal/children/:studentId/attendance, gated by
+   * SisRepository.isGuardianOf) — duplicating that check here would
+   * require this module to import SisModule, which the module-
+   * boundary rule (domain modules depend on core, never on each
+   * other) forbids. A guardian who isn't also staff gets a real 403
+   * from this raw endpoint and should use the parent-portal one
+   * instead, which they already do via the actual Parent Dashboard UI.
+   */
+  listAttendanceForLearner(user: AuthenticatedUser, learnerId: string): Promise<AttendanceRecord[]> {
+    if (user.userId !== learnerId && !STAFF_ROLES.has(user.role)) {
+      throw new ForbiddenException('You can only view your own attendance record');
+    }
     return this.repo.listAttendanceForLearner(learnerId);
   }
 

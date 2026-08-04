@@ -29,15 +29,16 @@ export class AttendanceController {
 
   @Get('class/:classStreamId')
   listForClass(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('classStreamId', ParseUUIDPipe) classStreamId: string,
     @Query('date') date: string
   ) {
-    return this.service.listAttendanceForClass(classStreamId, date);
+    return this.service.listAttendanceForClass(user, classStreamId, date);
   }
 
   @Get('learner/:learnerId')
-  listForLearner(@Param('learnerId', ParseUUIDPipe) learnerId: string) {
-    return this.service.listAttendanceForLearner(learnerId);
+  listForLearner(@CurrentUser() user: AuthenticatedUser, @Param('learnerId', ParseUUIDPipe) learnerId: string) {
+    return this.service.listAttendanceForLearner(user, learnerId);
   }
 }
 
