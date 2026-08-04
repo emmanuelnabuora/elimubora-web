@@ -89,3 +89,9 @@ export const createBehaviourNoteSchema = z.object({
   occurredAt: z.string().datetime().optional()
 });
 export type CreateBehaviourNoteDto = z.infer<typeof createBehaviourNoteSchema>;
+
+export const activateAccountSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(12, 'Must be at least 12 characters')
+});
+export type ActivateAccountDto = z.infer<typeof activateAccountSchema>;

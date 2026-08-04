@@ -1,13 +1,16 @@
 import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../core/auth/auth.types';
+import { PasswordService } from '../../core/auth/password.service';
 import { UserProvisioningService } from '../../core/identity/user-provisioning.service';
 import type {
+  ActivateAccountDto,
   CreateApplicationDto,
   CreateBehaviourNoteDto,
   CreateClassStreamDto,
@@ -38,7 +41,8 @@ const MEDICAL_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
 export class SisService {
   constructor(
     private readonly repo: SisRepository,
-    private readonly provisioning: UserProvisioningService
+    private readonly provisioning: UserProvisioningService,
+    private readonly passwords: PasswordService
   ) {}
 
   private requireAdmin(user: AuthenticatedUser): void {
@@ -133,6 +137,36 @@ export class SisService {
     const profile = await this.repo.getMyProfile(user.userId);
     if (!profile) throw new NotFoundException('Student profile not found');
     return profile;
+  }
+
+  /**
+   * Closes a real gap: enrollStudent's shadow account has an
+   * intentionally unusable password and a fake placeholder email, so
+   * an enrolled student previously had no way to ever actually log in
+   * as themselves. Admin sets real credentials directly for the
+   * EXISTING account (same id, same enrollment/attendance/submission
+   * history) — the same pattern TenantProvisioningService already
+   * uses for a new school's first admin, not a new one invented here.
+   */
+  async activateAccount(user: AuthenticatedUser, studentId: string, dto: ActivateAccountDto): Promise<{ studentId: string; email: string }> {
+    this.requireAdmin(user);
+    const passwordHash = await this.passwords.hash(dto.password);
+    let activated: boolean;
+    try {
+      activated = await this.repo.activateAccount(studentId, dto.email, passwordHash);
+    } catch (err) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        (err as { code?: string }).code === '23505' &&
+        (err as { constraint?: string }).constraint === 'users_email_key'
+      ) {
+        throw new ConflictException('An account with this email already exists.');
+      }
+      throw err;
+    }
+    if (!activated) throw new NotFoundException('Student profile not found');
+    return { studentId, email: dto.email.trim().toLowerCase() };
   }
 
   // ---------------- enrollment (the cross-cutting orchestration) ----------------

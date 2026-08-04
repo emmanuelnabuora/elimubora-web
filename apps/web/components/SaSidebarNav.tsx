@@ -12,6 +12,7 @@ import {
   Megaphone,
   NotebookPen,
   Sparkles,
+  User,
   UserCog,
   Users,
   Wallet,
@@ -21,6 +22,7 @@ import {
 export type SaIconName =
   | 'layout-dashboard'
   | 'users'
+  | 'user'
   | 'calendar-clock'
   | 'wallet'
   | 'user-cog'
@@ -46,6 +48,7 @@ export interface SaNavSection {
 const ICONS: Record<SaIconName, LucideIcon> = {
   'layout-dashboard': LayoutDashboard,
   users: Users,
+  user: User,
   'calendar-clock': CalendarClock,
   wallet: Wallet,
   'user-cog': UserCog,

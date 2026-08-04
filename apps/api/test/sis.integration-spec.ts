@@ -553,4 +553,65 @@ d('Student Information System (integration)', () => {
     expect(learnerTitles).toContain('Grade 4 notice');
     expect(learnerTitles).not.toContain('Grade 9 notice');
   });
+
+  it('PATCH /students/:id/activate-account gives a shadow account real, usable credentials — admin-only', async () => {
+    const student = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Activation Test Student', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+      .expect(201);
+    const studentId = student.body.studentId;
+
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/activate-account`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ email: `activated-${Date.now()}@school.ke`, password: 'A-genuinely-long-password-1' })
+      .expect(403);
+
+    const realEmail = `activated-${Date.now()}@school.ke`;
+    const res = await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/activate-account`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ email: realEmail, password: 'A-genuinely-long-password-1' })
+      .expect(200);
+    expect(res.body.studentId).toBe(studentId);
+    expect(res.body.email).toBe(realEmail);
+
+    // The actual point: this account can now genuinely log in with
+    // real, admin-chosen credentials — no direct-SQL workaround
+    // needed, unlike the earlier tests in this file that had to set a
+    // password hash directly because this endpoint didn't exist yet.
+    const loginRes = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ email: realEmail, password: 'A-genuinely-long-password-1' })
+      .expect(200);
+    expect(loginRes.body.memberships[0].role).toBe('learner');
+
+    const me = await request(app.getHttpServer())
+      .get('/v1/students/me')
+      .set('authorization', `Bearer ${loginRes.body.tokens.accessToken}`)
+      .expect(200);
+    expect(me.body.studentId).toBe(studentId);
+    expect(me.body.fullName).toBe('Activation Test Student');
+
+    // Re-activating with an email already in use elsewhere is a clean
+    // 409, not a raw 500.
+    const otherStudent = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Second Activation Student', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${otherStudent.body.studentId}/activate-account`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ email: realEmail, password: 'A-genuinely-long-password-1' })
+      .expect(409);
+
+    // A non-existent student id is a clean 404, not a silent no-op.
+    await request(app.getHttpServer())
+      .patch('/v1/students/00000000-0000-0000-0000-000000000000/activate-account')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ email: `nobody-${Date.now()}@school.ke`, password: 'A-genuinely-long-password-1' })
+      .expect(404);
+  });
 });

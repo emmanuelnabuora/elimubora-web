@@ -909,4 +909,45 @@ export class SisRepository {
       }));
     });
   }
+
+  /**
+   * Gives an enrolled student's EXISTING shadow account (created by
+   * enrollStudent via UserProvisioningService.provisionShadowMember)
+   * real, usable login credentials — a real email and a real password
+   * — rather than creating a new, disconnected account. Preserving
+   * the same core.users.id matters: every submission, attendance
+   * record, and grade already references this specific id.
+   *
+   * core.users' RLS (migration 0003) only has a policy for "a user
+   * updates their own row" (users_self: id = current_actor_id()) —
+   * there's no separate admin-updates-tenant-member policy. Setting
+   * actorId to the STUDENT's own id in withContext satisfies that
+   * policy legitimately: from RLS's perspective this looks like (and
+   * functionally is) the same "acting on behalf of" pattern
+   * UserProvisioningService and TenantProvisioningService already use
+   * for cross-actor operations, not a new bypass invented here.
+   */
+  /** Returns false if no such student exists in this tenant, so the service layer can throw a proper 404. */
+  async activateAccount(studentId: string, email: string, passwordHash: string): Promise<boolean> {
+    const existing = await this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query(
+        `SELECT 1 FROM sis.student_profiles WHERE student_id = $1 AND deleted_at IS NULL`,
+        [studentId]
+      );
+      return rows.length > 0;
+    });
+    if (!existing) return false;
+
+    await this.db.withTenantTransaction(
+      async (client) => {
+        await client.query(`UPDATE core.users SET email = $1, password_hash = $2 WHERE id = $3`, [
+          email.trim().toLowerCase(),
+          passwordHash,
+          studentId
+        ]);
+      },
+      { actorId: studentId }
+    );
+    return true;
+  }
 }

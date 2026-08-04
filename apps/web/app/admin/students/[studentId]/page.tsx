@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiFetch } from '../../../../lib/api-client';
 import { AddGuardianForm } from './AddGuardianForm';
+import { ActivateAccountForm } from './ActivateAccountForm';
 
 interface StudentListItem {
   studentId: string;
@@ -49,6 +50,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           Admission #{student.admissionNumber} &middot; {student.className ?? 'No class assigned'}
         </p>
       )}
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Portal access</h2>
+        <ActivateAccountForm studentId={studentId} />
+      </div>
 
       <div className="admin-section">
         <h2 className="admin-section-title">Guardians ({guardians.length})</h2>

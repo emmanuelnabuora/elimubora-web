@@ -11,6 +11,7 @@ import { CurrentUser } from '../../core/auth/decorators';
 import type { AuthenticatedUser } from '../../core/auth/auth.types';
 import { ZodValidationPipe } from '../../core/http/zod-validation.pipe';
 import {
+  activateAccountSchema,
   createApplicationSchema,
   createBehaviourNoteSchema,
   createClassStreamSchema,
@@ -23,6 +24,7 @@ import {
   linkGuardianSchema,
   requestTransferSchema,
   updateMedicalSchema,
+  type ActivateAccountDto,
   type CreateApplicationDto,
   type CreateBehaviourNoteDto,
   type CreateClassStreamDto,
@@ -140,6 +142,15 @@ export class StudentsController {
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.sis.getStudentProfile(id);
+  }
+
+  @Patch(':id/activate-account')
+  activateAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(activateAccountSchema)) dto: ActivateAccountDto
+  ) {
+    return this.sis.activateAccount(user, id, dto);
   }
 
   @Post(':id/guardians')
