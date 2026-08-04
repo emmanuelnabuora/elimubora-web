@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { apiFetch } from '../../../../lib/api-client';
+import { ChildSwitcher } from './ChildSwitcher';
+import { WeeklyAttendanceChart } from './WeeklyAttendanceChart';
+import { PaymentForm } from './PaymentForm';
+import { CompositionDonut } from '../../../../components/CompositionDonut';
 
 interface Child {
   studentId: string;
@@ -69,6 +73,7 @@ export default async function ChildDetailPage({ params }: { params: Promise<{ st
       <Link href="/parent" className="admin-nav-link" style={{ padding: '4px 0', display: 'inline-block' }}>
         &larr; My Children
       </Link>
+      <ChildSwitcher children={children} currentId={studentId} />
       <h1 className="admin-page-title">{child?.fullName ?? 'Child'}</h1>
 
       <div className="kpi-grid">
@@ -85,6 +90,11 @@ export default async function ChildDetailPage({ params }: { params: Promise<{ st
 
       <div className="admin-section">
         <h2 className="admin-section-title">Attendance ({attendance.length})</h2>
+        {attendance.length > 0 && (
+          <div style={{ marginBottom: 'var(--eb-space-4)' }}>
+            <WeeklyAttendanceChart records={attendance} />
+          </div>
+        )}
         {attendance.length === 0 ? (
           <p className="admin-empty">No attendance recorded yet.</p>
         ) : (
@@ -147,6 +157,26 @@ export default async function ChildDetailPage({ params }: { params: Promise<{ st
 
       <div className="admin-section">
         <h2 className="admin-section-title">Fees ({fees.length})</h2>
+        {fees.length > 0 &&
+          (() => {
+            const totalPaid = fees.reduce((sum, f) => sum + Number(f.amountPaid), 0);
+            const totalOutstanding = fees.reduce(
+              (sum, f) => sum + Math.max(Number(f.amountDue) - Number(f.amountPaid), 0),
+              0
+            );
+            return (
+              <div style={{ marginBottom: 'var(--eb-space-4)' }}>
+                <CompositionDonut
+                  segments={[
+                    { name: 'Paid', value: totalPaid, color: '#20a85a' },
+                    { name: 'Outstanding', value: totalOutstanding, color: '#ef3038' }
+                  ]}
+                  centerValue={totalPaid + totalOutstanding}
+                  centerLabel="Total fees (KES)"
+                />
+              </div>
+            );
+          })()}
         {fees.length === 0 ? (
           <p className="admin-empty">No invoices yet.</p>
         ) : (
@@ -179,6 +209,11 @@ export default async function ChildDetailPage({ params }: { params: Promise<{ st
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Make a payment</h2>
+        <PaymentForm invoices={fees} />
       </div>
 
       <div className="admin-section">
