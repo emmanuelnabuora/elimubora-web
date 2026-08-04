@@ -28,6 +28,8 @@ import { SandboxPushProvider } from './push/sandbox-push.provider';
 import { PUSH_PROVIDER } from './push/push-provider.port';
 import { LocalFileStorageProvider } from './storage/local-file-storage.provider';
 import { FILE_STORAGE_PROVIDER } from './storage/file-storage.port';
+import { TenantProvisioningController } from './tenancy/tenant-provisioning.controller';
+import { TenantProvisioningService } from './tenancy/tenant-provisioning.service';
 
 /**
  * Core platform services, available everywhere without imports.
@@ -57,12 +59,13 @@ import { FILE_STORAGE_PROVIDER } from './storage/file-storage.port';
       }
     ])
   ],
-  controllers: [HealthController, SyncController, AiController, AuditController],
+  controllers: [HealthController, SyncController, AiController, AuditController, TenantProvisioningController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig(process.env) },
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
     { provide: NOTIFICATION_CHANNEL, useClass: DevLogNotificationChannel },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    TenantProvisioningService,
     DatabaseService,
     WorkerDatabaseService,
     AuditService,
