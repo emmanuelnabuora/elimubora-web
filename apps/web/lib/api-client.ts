@@ -63,6 +63,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body.message ?? `Request failed (${res.status})`);
   }
-  if (res.status === 204) return undefined as T;
-  return res.json();
+
+  // Not just 204: any endpoint whose service method returns void (the
+  // controller sends a real success status like 200/201 with a
+  // genuinely empty body, not necessarily 204) needs the same
+  // handling, or res.json() throws a JSON parse error on empty
+  // content. Found via a real bug: POST /library/resources/:id/access
+  // (recordAccess returns void) succeeded server-side every time but
+  // this route reported a generic failure back to the client because
+  // of this exact gap.
+  const text = await res.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
 }
