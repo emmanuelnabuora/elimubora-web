@@ -62,7 +62,7 @@ export default async function TimetablePage({
   const teachers = users.filter((u) => u.role === 'teacher');
 
   const slots = classStreamId
-    ? await apiFetch<TimetableSlot[]>(`/v1/timetable/class/${classStreamId}`)
+    ? await apiFetch<TimetableSlot[]>(`/v1/timetable/class/${classStreamId}?academicYear=${new Date().getFullYear()}`)
     : [];
 
   const courseTitle = (id: string) => courses.find((c) => c.id === id)?.title ?? id;

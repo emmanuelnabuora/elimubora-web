@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { Users, Megaphone } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -7,8 +6,8 @@ import type { SaNavSection } from '../../components/SaSidebarNav';
 const SECTIONS: SaNavSection[] = [
   {
     items: [
-      { href: '/parent', label: 'My Children', icon: Users },
-      { href: '/parent/announcements', label: 'Announcements', icon: Megaphone }
+      { href: '/parent', label: 'My Children', icon: 'users' },
+      { href: '/parent/announcements', label: 'Announcements', icon: 'megaphone' }
     ]
   }
 ];
