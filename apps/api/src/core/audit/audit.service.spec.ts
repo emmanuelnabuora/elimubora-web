@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { TenantContext } from '../tenancy/tenant-context';
+import type { DatabaseService } from '../database/database.service';
 import { AuditService } from './audit.service';
 
 describe('AuditService', () => {
@@ -12,7 +13,10 @@ describe('AuditService', () => {
       })
     } as unknown as PoolClient;
 
-    const service = new AuditService();
+    // record() never touches this.db — only the new listRecent()
+    // method does, which this test doesn't exercise — so a stub is
+    // enough rather than a real DatabaseService.
+    const service = new AuditService({} as DatabaseService);
     await TenantContext.run({ requestId: 'req-9', tenantId: 't1' }, () =>
       service.record(client, {
         action: 'tenant.updated',

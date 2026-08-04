@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, CalendarClock, Wallet, ClipboardCheck, UserPlus, BookMarked } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, CalendarClock, Wallet, ClipboardCheck, UserPlus, BookMarked, ScrollText } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -22,7 +22,8 @@ const SECTIONS: SaNavSection[] = [
     label: 'ADMINISTRATION',
     items: [
       { href: '/admin/staff', label: 'Staff', icon: UserCog },
-      { href: '/admin/leave-requests', label: 'Leave Requests', icon: ClipboardCheck }
+      { href: '/admin/leave-requests', label: 'Leave Requests', icon: ClipboardCheck },
+      { href: '/admin/logs', label: 'System Logs', icon: ScrollText }
     ]
   }
 ];

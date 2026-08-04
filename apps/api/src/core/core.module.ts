@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule, minutes } from '@nestjs/throttler';
 import { APP_CONFIG, loadConfig } from '../config/configuration';
 import { AuditService } from './audit/audit.service';
+import { AuditController } from './audit/audit.controller';
 import { DatabaseService } from './database/database.service';
 import { WorkerDatabaseService } from './database/worker-database.service';
 import { HealthController } from './health/health.controller';
@@ -56,7 +57,7 @@ import { FILE_STORAGE_PROVIDER } from './storage/file-storage.port';
       }
     ])
   ],
-  controllers: [HealthController, SyncController, AiController],
+  controllers: [HealthController, SyncController, AiController, AuditController],
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig(process.env) },
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
