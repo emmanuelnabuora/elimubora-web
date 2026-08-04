@@ -17,7 +17,8 @@
     "lint:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs",
     "db:migrate": "node tools/migrate.mjs",
     "dev:api": "npm run start:dev --workspace @elimubora/api",
-    "dev:web": "npm run dev --workspace @elimubora/web"
+    "dev:web": "npm run dev --workspace @elimubora/web",
+    "start": "npm run start --workspace=apps/web"
   },
   "overrides": {
     "postcss": "^8.5.18",

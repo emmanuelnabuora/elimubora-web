@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, CalendarClock, Wallet, ClipboardCheck, UserPlus, BookMarked, ScrollText } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -7,23 +6,23 @@ import type { SaNavSection } from '../../components/SaSidebarNav';
 const ADMIN_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
 
 const SECTIONS: SaNavSection[] = [
-  { items: [{ href: '/admin', label: 'Overview', icon: LayoutDashboard }] },
+  { items: [{ href: '/admin', label: 'Overview', icon: 'layout-dashboard' }] },
   {
     label: 'ACADEMIC',
     items: [
-      { href: '/admin/students', label: 'Students', icon: Users },
-      { href: '/admin/admissions', label: 'Admissions', icon: UserPlus },
-      { href: '/admin/subjects', label: 'Subjects', icon: BookMarked },
-      { href: '/admin/timetable', label: 'Timetable', icon: CalendarClock }
+      { href: '/admin/students', label: 'Students', icon: 'users' },
+      { href: '/admin/admissions', label: 'Admissions', icon: 'clipboard-list' },
+      { href: '/admin/subjects', label: 'Subjects', icon: 'notebook-pen' },
+      { href: '/admin/timetable', label: 'Timetable', icon: 'calendar-clock' }
     ]
   },
-  { label: 'FINANCE', items: [{ href: '/admin/fees', label: 'Fees', icon: Wallet }] },
+  { label: 'FINANCE', items: [{ href: '/admin/fees', label: 'Fees', icon: 'wallet' }] },
   {
     label: 'ADMINISTRATION',
     items: [
-      { href: '/admin/staff', label: 'Staff', icon: UserCog },
-      { href: '/admin/leave-requests', label: 'Leave Requests', icon: ClipboardCheck },
-      { href: '/admin/logs', label: 'System Logs', icon: ScrollText }
+      { href: '/admin/staff', label: 'Staff', icon: 'user-cog' },
+      { href: '/admin/leave-requests', label: 'Leave Requests', icon: 'clipboard-check' },
+      { href: '/admin/logs', label: 'System Logs', icon: 'clipboard-list' }
     ]
   }
 ];
