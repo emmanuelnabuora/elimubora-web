@@ -20,6 +20,7 @@ interface Submission {
   status: string;
   score: string | null;
   feedback: string | null;
+  gradedAt: string | null;
 }
 
 async function fetchMySubmission(assignmentId: string): Promise<Submission | null> {
@@ -33,6 +34,41 @@ async function fetchMySubmission(assignmentId: string): Promise<Submission | nul
   }
 }
 
+interface RecentGrade {
+  courseTitle: string;
+  assignmentTitle: string;
+  score: string;
+  maxScore: string;
+  gradedAt: string;
+}
+
+async function fetchRecentGrades(courses: Course[]): Promise<RecentGrade[]> {
+  const perCourse = await Promise.all(
+    courses.map(async (course) => {
+      const assignments = await apiFetch<Assignment[]>(`/v1/courses/${course.id}/assignments`);
+      const submissions = await Promise.all(assignments.map((a) => fetchMySubmission(a.id)));
+      const graded: RecentGrade[] = [];
+      assignments.forEach((a, i) => {
+        const sub = submissions[i];
+        if (sub && sub.status === 'graded' && sub.score !== null && sub.gradedAt) {
+          graded.push({
+            courseTitle: course.title,
+            assignmentTitle: a.title,
+            score: sub.score,
+            maxScore: a.maxScore,
+            gradedAt: sub.gradedAt
+          });
+        }
+      });
+      return graded;
+    })
+  );
+  return perCourse
+    .flat()
+    .sort((a, b) => b.gradedAt.localeCompare(a.gradedAt))
+    .slice(0, 10);
+}
+
 export default async function AssignmentsPage({
   searchParams
 }: {
@@ -41,12 +77,42 @@ export default async function AssignmentsPage({
   const { courseId } = await searchParams;
 
   const courses = await apiFetch<Course[]>('/v1/courses/mine');
-  const assignments = courseId ? await apiFetch<Assignment[]>(`/v1/courses/${courseId}/assignments`) : [];
+  const [assignments, recentGrades] = await Promise.all([
+    courseId ? apiFetch<Assignment[]>(`/v1/courses/${courseId}/assignments`) : Promise.resolve([]),
+    fetchRecentGrades(courses)
+  ]);
   const submissions = await Promise.all(assignments.map((a) => fetchMySubmission(a.id)));
 
   return (
     <div>
       <h1 className="admin-page-title">Assignments</h1>
+
+      {recentGrades.length > 0 && (
+        <div className="admin-section">
+          <h2 className="admin-section-title">Recent grades</h2>
+          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+            {recentGrades.map((g, i) => (
+              <div
+                key={i}
+                style={{
+                  flex: '0 0 auto',
+                  minWidth: 160,
+                  border: '1px solid var(--eb-line)',
+                  borderRadius: 'var(--eb-radius-sm)',
+                  padding: 12,
+                  background: 'var(--eb-green-100)'
+                }}
+              >
+                <p style={{ fontSize: 12, color: 'var(--eb-fg-muted)', margin: '0 0 4px' }}>{g.courseTitle}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px' }}>{g.assignmentTitle}</p>
+                <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                  {g.score} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--eb-fg-muted)' }}>/ {g.maxScore}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="admin-section">
         <CourseSelector courses={courses} selected={courseId} />
