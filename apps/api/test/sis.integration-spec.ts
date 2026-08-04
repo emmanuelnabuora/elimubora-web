@@ -365,4 +365,76 @@ d('Student Information System (integration)', () => {
       resB.body.find((s: { studentId: string }) => s.studentId === dedicatedStudent.body.studentId)
     ).toBeUndefined();
   });
+
+  it('submits an admission application, admin-only', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/admissions')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({
+        candidateName: 'Kevin Otieno',
+        guardianName: 'Mary Otieno',
+        guardianPhone: '0712345678',
+        gradeLevelApplied: 'G3'
+      })
+      .expect(403);
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        candidateName: 'Kevin Otieno',
+        guardianName: 'Mary Otieno',
+        guardianPhone: '0712345678',
+        gradeLevelApplied: 'G3'
+      })
+      .expect(201);
+    expect(res.body.status).toBe('submitted');
+  });
+
+  it('GET /admissions lists tenant-scoped applications, admin-only, and a decision updates status', async () => {
+    const app1 = await request(app.getHttpServer())
+      .post('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        candidateName: 'Listing Test Candidate',
+        guardianName: 'Guardian Name',
+        guardianPhone: '0700000000',
+        gradeLevelApplied: 'G2'
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/v1/admissions')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+
+    const listed = await request(app.getHttpServer())
+      .get('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const found = listed.body.find((a: { id: string }) => a.id === app1.body.id);
+    expect(found).toBeDefined();
+    expect(found.status).toBe('submitted');
+
+    // Tenant B's admin sees none of tenant A's applications — real RLS isolation.
+    const listedB = await request(app.getHttpServer())
+      .get('/v1/admissions')
+      .set('authorization', `Bearer ${adminBToken}`)
+      .expect(200);
+    expect(listedB.body.find((a: { id: string }) => a.id === app1.body.id)).toBeUndefined();
+
+    await request(app.getHttpServer())
+      .patch(`/v1/admissions/${app1.body.id}/decision`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ status: 'admitted', notes: 'Strong interview' })
+      .expect(200);
+
+    const afterDecision = await request(app.getHttpServer())
+      .get('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const decided = afterDecision.body.find((a: { id: string }) => a.id === app1.body.id);
+    expect(decided.status).toBe('admitted');
+    expect(decided.notes).toBe('Strong interview');
+  });
 });

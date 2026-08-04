@@ -575,6 +575,47 @@ export class SisRepository {
     });
   }
 
+  /**
+   * All applications in the tenant — a real gap: only single-by-id
+   * lookup existed before, which requires already knowing a specific
+   * application's UUID. An admin reviewing what's awaiting a decision
+   * has no way to discover that without this.
+   */
+  async listApplications(): Promise<AdmissionApplication[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{
+        id: string;
+        candidate_name: string;
+        date_of_birth: Date | null;
+        guardian_name: string;
+        guardian_phone: string;
+        grade_level_applied: string;
+        status: ApplicationStatus;
+        reviewed_by: string | null;
+        decided_at: Date | null;
+        notes: string | null;
+      }>(
+        `SELECT * FROM sis.admission_applications
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY
+            CASE status WHEN 'submitted' THEN 0 WHEN 'under_review' THEN 1 ELSE 2 END,
+            candidate_name`
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        candidateName: r.candidate_name,
+        dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
+        guardianName: r.guardian_name,
+        guardianPhone: r.guardian_phone,
+        gradeLevelApplied: r.grade_level_applied,
+        status: r.status,
+        reviewedBy: r.reviewed_by,
+        decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
+        notes: r.notes
+      }));
+    });
+  }
+
   async decideApplication(
     id: string,
     input: { status: ApplicationStatus; notes?: string; reviewedBy: string }

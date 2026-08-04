@@ -89,6 +89,11 @@ export class SisService {
     return app;
   }
 
+  listApplications(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listApplications();
+  }
+
   async decideApplication(
     user: AuthenticatedUser,
     id: string,

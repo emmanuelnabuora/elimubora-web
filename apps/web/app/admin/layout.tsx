@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, CalendarClock, Wallet, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, CalendarClock, Wallet, ClipboardCheck, UserPlus, BookMarked } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -12,6 +12,8 @@ const SECTIONS: SaNavSection[] = [
     label: 'ACADEMIC',
     items: [
       { href: '/admin/students', label: 'Students', icon: Users },
+      { href: '/admin/admissions', label: 'Admissions', icon: UserPlus },
+      { href: '/admin/subjects', label: 'Subjects', icon: BookMarked },
       { href: '/admin/timetable', label: 'Timetable', icon: CalendarClock }
     ]
   },

@@ -50,6 +50,11 @@ export class AdmissionsController {
     return this.sis.submitApplication(user, dto);
   }
 
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.listApplications(user);
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.sis.getApplication(id);
