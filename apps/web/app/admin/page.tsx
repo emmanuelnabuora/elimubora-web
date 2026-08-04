@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Users, UserCog, Wallet, ClipboardCheck, GraduationCap, PiggyBank } from 'lucide-react';
+import { Users, UserCog, Wallet, ClipboardCheck, GraduationCap, PiggyBank, Contact } from 'lucide-react';
 import { apiFetch } from '../../lib/api-client';
 import { StudentsByGradeChart } from '../../components/StudentsByGradeChart';
 import { FeeCollectionDonut } from '../../components/FeeCollectionDonut';
+import { CompositionDonut } from '../../components/CompositionDonut';
 
 interface StudentListItem {
   studentId: string;
@@ -51,6 +52,26 @@ export default async function AdminOverviewPage() {
   const invoiced = Number(collection.totalInvoiced);
   const collected = Number(collection.totalCollected);
   const outstanding = Math.max(invoiced - collected, 0);
+
+  const roleLabels: Record<string, string> = {
+    teacher: 'Teachers',
+    school_admin: 'School Admins',
+    principal: 'Principals'
+  };
+  const roleColors: Record<string, string> = {
+    teacher: '#5546e8',
+    school_admin: '#3478e5',
+    principal: '#f59e0b'
+  };
+  const roleCounts: Record<string, number> = {};
+  for (const u of users) {
+    if (roleLabels[u.role]) roleCounts[u.role] = (roleCounts[u.role] ?? 0) + 1;
+  }
+  const staffSegments = Object.entries(roleCounts).map(([role, count]) => ({
+    name: roleLabels[role]!,
+    value: count,
+    color: roleColors[role]!
+  }));
 
   return (
     <div>
@@ -141,7 +162,19 @@ export default async function AdminOverviewPage() {
         </div>
       </div>
 
-      <div className="sa-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+      <div className="sa-grid staff-row">
+        <div className="sa-card">
+          <div className="sa-card-header">
+            <h2 className="sa-card-title">
+              <Contact />
+              Staff Overview
+            </h2>
+            <Link href="/admin/staff" className="sa-link">
+              View all
+            </Link>
+          </div>
+          <CompositionDonut segments={staffSegments} centerValue={staffCount} centerLabel="Total Staff" />
+        </div>
         <Link href="/admin/students" className="sa-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="sa-card-header" style={{ marginBottom: 0 }}>
             <h2 className="sa-card-title">
