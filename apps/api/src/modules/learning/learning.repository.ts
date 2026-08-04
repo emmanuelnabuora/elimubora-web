@@ -461,23 +461,40 @@ export class LearningRepository {
     });
   }
 
-  async listRosterForCourse(courseId: string): Promise<Enrollment[]> {
+  /**
+   * A real, currently-shipping bug this fixes: the Grading page
+   * resolves submitter names by calling GET /students to cross-
+   * reference learnerId -- but that endpoint is admin-only
+   * (requireAdmin in SisService). Any real (non-admin) teacher
+   * account hitting Grading would get a 403 from that call, and
+   * because it runs inside a Promise.all with the page's other
+   * fetches, the whole page would fail to render, not just the name
+   * resolution. Joining core.users here, on an endpoint teachers can
+   * already call with no restriction, is the actual fix, not a
+   * workaround -- roster is naturally course-scoped data a teacher of
+   * that course has an obvious right to see.
+   */
+  async listRosterForCourse(courseId: string): Promise<Array<Enrollment & { fullName: string }>> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{
         id: string;
         course_id: string;
         user_id: string;
         course_role: 'learner' | 'teacher';
+        full_name: string;
       }>(
-        `SELECT id, course_id, user_id, course_role FROM learning.enrollments
-          WHERE course_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        `SELECT e.id, e.course_id, e.user_id, e.course_role, u.full_name
+           FROM learning.enrollments e
+           JOIN core.users u ON u.id = e.user_id
+          WHERE e.course_id = $1 AND e.tenant_id = core.current_tenant_id() AND e.deleted_at IS NULL`,
         [courseId]
       );
       return rows.map((r) => ({
         id: r.id,
         courseId: r.course_id,
         userId: r.user_id,
-        courseRole: r.course_role
+        courseRole: r.course_role,
+        fullName: r.full_name
       }));
     });
   }

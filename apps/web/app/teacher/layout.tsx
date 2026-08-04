@@ -7,9 +7,12 @@ const SECTIONS: SaNavSection[] = [
   {
     items: [
       { href: '/teacher', label: 'Overview', icon: 'layout-dashboard' },
+      { href: '/teacher/timetable', label: 'My Timetable', icon: 'calendar-clock' },
       { href: '/teacher/attendance', label: 'Attendance', icon: 'calendar-check' },
+      { href: '/teacher/assignments', label: 'Assignments', icon: 'clipboard-list' },
       { href: '/teacher/grading', label: 'Grading', icon: 'graduation-cap' },
-      { href: '/teacher/lesson-plans', label: 'Lesson Plans', icon: 'notebook-pen' }
+      { href: '/teacher/lesson-plans', label: 'Lesson Plans', icon: 'notebook-pen' },
+      { href: '/teacher/announcements', label: 'Announcements', icon: 'megaphone' }
     ]
   }
 ];

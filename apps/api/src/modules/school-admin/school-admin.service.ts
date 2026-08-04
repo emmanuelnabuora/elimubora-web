@@ -63,7 +63,19 @@ export class SchoolAdminService {
     return this.repo.listTimetableForClass(classStreamId, academicYear);
   }
 
-  listTimetableForTeacher(teacherId: string, academicYear: number): Promise<TimetableSlot[]> {
+  /**
+   * Real gap closed here, same pattern as listMyLeaveRequests above:
+   * this previously had NO authorization check at all — any tenant
+   * member, including an unrelated student, could view any teacher's
+   * schedule by knowing their user id. Less sensitive than the
+   * attendance case (a schedule isn't private data the way a
+   * specific student's records are), but still worth the same fix
+   * rather than leaving it open by omission.
+   */
+  listTimetableForTeacher(user: AuthenticatedUser, teacherId: string, academicYear: number) {
+    if (teacherId !== user.userId && !ADMIN_ROLES.has(user.role)) {
+      throw new ForbiddenException('You can only view your own timetable');
+    }
     return this.repo.listTimetableForTeacher(teacherId, academicYear);
   }
 

@@ -22,8 +22,9 @@ interface Submission {
   feedback: string | null;
 }
 
-interface StudentListItem {
-  studentId: string;
+interface RosterEntry {
+  userId: string;
+  courseRole: string;
   fullName: string;
 }
 
@@ -34,19 +35,25 @@ export default async function GradingPage({
 }) {
   const { courseId, assignmentId } = await searchParams;
 
-  const [dashboard, students] = await Promise.all([
-    apiFetch<{ courses: CourseSummary[] }>('/v1/teacher/dashboard'),
-    apiFetch<StudentListItem[]>('/v1/students')
-  ]);
+  const dashboard = await apiFetch<{ courses: CourseSummary[] }>('/v1/teacher/dashboard');
 
   const assignments = courseId ? await apiFetch<Assignment[]>(`/v1/courses/${courseId}/assignments`) : [];
+  // Real bug fixed here: this used to call the admin-only
+  // GET /students to resolve names, which throws a 403 for any real
+  // (non-admin) teacher account and crashed the whole page (it ran
+  // inside the same Promise.all as everything else). The roster
+  // endpoint every teacher can already call now includes fullName —
+  // see learning.repository.ts's listRosterForCourse for the actual
+  // fix. Fetched per-course rather than once, since roster is
+  // naturally course-scoped.
+  const roster = courseId ? await apiFetch<RosterEntry[]>(`/v1/courses/${courseId}/roster`) : [];
 
   const submissions = assignmentId
     ? await apiFetch<Submission[]>(`/v1/assignments/${assignmentId}/submissions`)
     : [];
 
   const selectedAssignment = assignments.find((a) => a.id === assignmentId);
-  const studentName = (id: string) => students.find((s) => s.studentId === id)?.fullName ?? id;
+  const studentName = (id: string) => roster.find((r) => r.userId === id)?.fullName ?? id;
 
   return (
     <div>

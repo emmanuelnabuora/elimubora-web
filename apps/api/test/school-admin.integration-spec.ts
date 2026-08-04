@@ -270,6 +270,37 @@ d('School Administration (integration)', () => {
       .expect(201);
   });
 
+  it('GET /timetable/teacher/:teacherId — self and admin can view it, an unrelated teacher cannot, and the class name resolves', async () => {
+    const teacherToken = await login(teacherEmail);
+    const own = await request(app.getHttpServer())
+      .get(`/v1/timetable/teacher/${teacherId}`)
+      .query({ academicYear: 2026 })
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    expect(own.body.length).toBeGreaterThanOrEqual(3);
+    // The actual gap this closes: previously only a raw classStreamId
+    // was returned, not a name — far less useful for a real "My
+    // Timetable" view.
+    expect(own.body[0].className).toBeTruthy();
+
+    const asAdmin = await request(app.getHttpServer())
+      .get(`/v1/timetable/teacher/${teacherId}`)
+      .query({ academicYear: 2026 })
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(asAdmin.body.length).toBe(own.body.length);
+
+    // The actual security fix: previously this had NO authorization
+    // check at all — any tenant member could view any teacher's
+    // schedule. An unrelated teacher must now be rejected.
+    const teacher2Token = await login(teacher2Email);
+    await request(app.getHttpServer())
+      .get(`/v1/timetable/teacher/${teacherId}`)
+      .query({ academicYear: 2026 })
+      .set('authorization', `Bearer ${teacher2Token}`)
+      .expect(403);
+  });
+
   it('staff can submit a leave request; approving it is admin-only and self-approval is blocked', async () => {
     const teacherToken = await login(teacherEmail);
     const leave = await request(app.getHttpServer())

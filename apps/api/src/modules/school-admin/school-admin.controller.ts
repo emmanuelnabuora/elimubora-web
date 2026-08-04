@@ -64,10 +64,11 @@ export class TimetableController {
 
   @Get('teacher/:teacherId')
   forTeacher(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('teacherId', ParseUUIDPipe) teacherId: string,
     @Query('academicYear', ParseIntPipe) academicYear: number
   ) {
-    return this.service.listTimetableForTeacher(teacherId, academicYear);
+    return this.service.listTimetableForTeacher(user, teacherId, academicYear);
   }
 }
 

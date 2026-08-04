@@ -137,9 +137,13 @@ d('Learning platform + sync engine (integration)', () => {
       .get(`/v1/courses/${courseId}/roster`)
       .set('authorization', `Bearer ${teacherToken}`)
       .expect(200);
-    expect(roster.body).toEqual([
-      expect.objectContaining({ courseRole: 'teacher' })
-    ]);
+    expect(roster.body).toEqual([expect.objectContaining({ courseRole: 'teacher' })]);
+    // A real, previously-shipping bug: the Grading page resolved
+    // submitter names via admin-only GET /students, which a real
+    // (non-admin) teacher account can't call — this fullName field is
+    // the actual fix, verified directly here, not just inferred from
+    // the endpoint returning 200.
+    expect(roster.body[0].fullName).toBeTruthy();
   });
 
   it('a teacher from another tenant cannot see or manage this course (RLS)', async () => {
@@ -193,6 +197,13 @@ d('Learning platform + sync engine (integration)', () => {
       .set('authorization', `Bearer ${teacherToken}`)
       .send({ userId: learnerId, courseRole: 'learner' })
       .expect(201);
+
+    const roster = await request(app.getHttpServer())
+      .get(`/v1/courses/${courseId}/roster`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const learnerEntry = roster.body.find((r: { userId: string }) => r.userId === learnerId);
+    expect(learnerEntry.fullName).toBeTruthy();
   });
 
   it('GET /courses/mine returns only what this learner is actually enrolled in', async () => {

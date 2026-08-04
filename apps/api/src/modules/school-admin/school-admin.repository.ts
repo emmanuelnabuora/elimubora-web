@@ -194,16 +194,28 @@ export class SchoolAdminRepository {
     });
   }
 
-  async listTimetableForTeacher(teacherId: string, academicYear: number): Promise<TimetableSlot[]> {
+  /**
+   * A real gap this closes, the same class as roster's missing name:
+   * a teacher's own timetable is far less useful showing only a raw
+   * classStreamId. Joins sis.class_streams for name and gradeLevel,
+   * gradeLevel, which every teacher viewing their own schedule has an
+   * obvious right to see.
+   */
+  async listTimetableForTeacher(
+    teacherId: string,
+    academicYear: number
+  ): Promise<Array<TimetableSlot & { className: string | null; gradeLevel: string | null }>> {
     return this.db.withTenantTransaction(async (client) => {
-      const { rows } = await client.query<SlotRow>(
-        `SELECT * FROM schooladmin.timetable_slots
-          WHERE teacher_id = $1 AND academic_year = $2
-            AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
-          ORDER BY day_of_week, start_min`,
+      const { rows } = await client.query<SlotRow & { class_name: string | null; grade_level: string | null }>(
+        `SELECT ts.*, cs.name AS class_name, cs.grade_level
+           FROM schooladmin.timetable_slots ts
+           LEFT JOIN sis.class_streams cs ON cs.id = ts.class_stream_id
+          WHERE ts.teacher_id = $1 AND ts.academic_year = $2
+            AND ts.tenant_id = core.current_tenant_id() AND ts.deleted_at IS NULL
+          ORDER BY ts.day_of_week, ts.start_min`,
         [teacherId, academicYear]
       );
-      return rows.map(toSlot);
+      return rows.map((r) => ({ ...toSlot(r), className: r.class_name, gradeLevel: r.grade_level }));
     });
   }
 

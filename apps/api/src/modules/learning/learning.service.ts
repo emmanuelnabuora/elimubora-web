@@ -151,7 +151,7 @@ export class LearningService {
     return this.repo.enroll(courseId, dto.userId, dto.courseRole);
   }
 
-  listRoster(courseId: string): Promise<Enrollment[]> {
+  listRoster(courseId: string): Promise<Array<Enrollment & { fullName: string }>> {
     return this.repo.listRosterForCourse(courseId);
   }
 
