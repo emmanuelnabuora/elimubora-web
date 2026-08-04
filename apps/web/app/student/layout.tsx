@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, Sparkles, Library } from 'lucide-react';
 import { getCurrentUser } from '../../lib/get-current-user';
 import { SaShell } from '../../components/SaShell';
 import type { SaNavSection } from '../../components/SaSidebarNav';
@@ -7,10 +6,10 @@ import type { SaNavSection } from '../../components/SaSidebarNav';
 const SECTIONS: SaNavSection[] = [
   {
     items: [
-      { href: '/student', label: 'Overview', icon: LayoutDashboard },
-      { href: '/student/assignments', label: 'Assignments', icon: ClipboardList },
-      { href: '/student/library', label: 'Library', icon: Library },
-      { href: '/student/homework-help', label: 'Homework Help', icon: Sparkles }
+      { href: '/student', label: 'Overview', icon: 'layout-dashboard' },
+      { href: '/student/assignments', label: 'Assignments', icon: 'clipboard-list' },
+      { href: '/student/library', label: 'Library', icon: 'notebook-pen' },
+      { href: '/student/homework-help', label: 'Homework Help', icon: 'sparkles' }
     ]
   }
 ];
