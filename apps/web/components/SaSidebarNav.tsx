@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Building2,
   CalendarCheck,
   CalendarClock,
   ClipboardCheck,
@@ -32,7 +33,8 @@ export type SaIconName =
   | 'megaphone'
   | 'calendar-check'
   | 'graduation-cap'
-  | 'notebook-pen';
+  | 'notebook-pen'
+  | 'building';
 
 export interface SaNavItem {
   href: string;
@@ -49,6 +51,7 @@ const ICONS: Record<SaIconName, LucideIcon> = {
   'layout-dashboard': LayoutDashboard,
   users: Users,
   user: User,
+  building: Building2,
   'calendar-clock': CalendarClock,
   wallet: Wallet,
   'user-cog': UserCog,
