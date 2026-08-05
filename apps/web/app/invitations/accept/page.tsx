@@ -8,7 +8,7 @@ export default async function AcceptInvitationPage({
   const { token } = await searchParams;
 
   return (
-    <main className="auth-page" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
+    <main className="auth-page landing-theme" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
       {!token ? (
         <div className="auth-card">
           <h2>Invalid invitation link</h2>

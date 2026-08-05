@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const { user } = result;
 
   return (
-    <main className="dashboard-page">
+    <main className="dashboard-page landing-theme">
       <SiteHeader showHelp={false} />
       <div className="dashboard-body">
         <div className="dashboard-card">

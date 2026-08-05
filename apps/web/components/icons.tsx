@@ -76,6 +76,16 @@ export function MinistryIcon(props: IconProps) {
   );
 }
 
+export function GraduationCapIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2 9.5 12 5l10 4.5-10 4.5-10-4.5Z" />
+      <path d="M6 11.5v4.3c0 1 2.7 2.7 6 2.7s6-1.7 6-2.7v-4.3" />
+      <path d="M20 9.5v5.5" />
+    </svg>
+  );
+}
+
 export function ShieldIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

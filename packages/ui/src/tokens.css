@@ -42,8 +42,8 @@
 
   /* Type — Lexend for display: designed for reading proficiency,
      fitting when learners are the largest audience. */
-  --eb-font-display: 'Lexend', system-ui, sans-serif;
-  --eb-font-body: 'Public Sans', system-ui, sans-serif;
+  --eb-font-display: 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --eb-font-body: 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --eb-font-mono: ui-monospace, 'JetBrains Mono', monospace;
 
   /* Shape & space */

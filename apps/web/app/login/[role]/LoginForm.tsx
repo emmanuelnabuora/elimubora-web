@@ -223,14 +223,14 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           className="auth-social-button"
           onClick={() => setSocialNote('Google sign-in is not connected yet — use email and password for now.')}
         >
-          <GoogleLogo /> Google
+          <GoogleLogo width={22} height={22} /> Google
         </button>
         <button
           type="button"
           className="auth-social-button"
           onClick={() => setSocialNote('Microsoft sign-in is not connected yet — use email and password for now.')}
         >
-          <MicrosoftLogo /> Microsoft
+          <MicrosoftLogo width={22} height={22} /> Microsoft
         </button>
       </div>
       {socialNote && <p className="auth-social-note">{socialNote}</p>}
