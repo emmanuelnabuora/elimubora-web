@@ -146,11 +146,98 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+export function HelpIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.3 1.9-2.3 3.4" />
+      <circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function GlobeIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.3-3.6-8.5S9.6 5.8 12 3.5Z" />
+    </svg>
+  );
+}
+
+export function MailIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
+    </svg>
+  );
+}
+
+export function LockIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="1.8" />
+      <path d="M7.5 10.5V7.8a4.5 4.5 0 0 1 9 0v2.7" />
+    </svg>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 12s3.7-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.7 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 3l18 18" />
+      <path d="M7.4 7.6C4.6 9 2.5 12 2.5 12s3.7 6.5 9.5 6.5c1.6 0 3.1-.5 4.4-1.2M10.6 5.6c.5-.1 1-.1 1.4-.1 5.8 0 9.5 6.5 9.5 6.5s-.8 1.5-2.4 3" />
+      <path d="M9.7 9.8a2.8 2.8 0 0 0 4 4" />
+    </svg>
+  );
+}
+
+export function BuildingIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 21V7.2l7-3.5 7 3.5V21" />
+      <path d="M3 21h18M9.5 21v-4.5h5V21M9.5 9.8h.01M14.5 9.8h.01M9.5 13.3h.01M14.5 13.3h.01" />
+    </svg>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8.5" cy="7.5" r="3" />
+      <path d="M3 20v-1.8A4.8 4.8 0 0 1 7.8 13.4h1.4a4.8 4.8 0 0 1 4.8 4.8V20" />
+      <circle cx="17" cy="9" r="2.3" />
+      <path d="M15.2 13.9a4 4 0 0 1 5.3 3.8V20" />
+    </svg>
+  );
+}
+
+export function ChalkboardIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="12" rx="1.5" />
+      <path d="M3 16 8.5 21M21 16 15.5 21M8.5 11.5l2.5-3 2.3 2 3-3.5" />
+    </svg>
+  );
+}
+
+export function ParentGroupIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="9.5" cy="7" r="2.9" />
+      <path d="M4 20v-1.6a5 5 0 0 1 5-5h1a5 5 0 0 1 5 5V20" />
+      <circle cx="18" cy="10.5" r="1.9" />
+      <path d="M15.3 20v-1a3.2 3.2 0 0 1 5.6-2.2" />
     </svg>
   );
 }

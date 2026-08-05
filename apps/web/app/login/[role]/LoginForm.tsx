@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { GoogleLogo, MicrosoftLogo } from '../../../components/icons';
+import { EyeIcon, EyeOffIcon, GoogleLogo, LockIcon, MailIcon, MicrosoftLogo } from '../../../components/icons';
 import type { RoleConfig } from '../../../lib/roles';
 
 interface Membership {
@@ -24,6 +24,8 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [stage, setStage] = useState<Stage>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [socialNote, setSocialNote] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
@@ -163,28 +165,53 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
       )}
       <label className="auth-field">
         <span>Email</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoFocus
-          autoComplete="email"
-        />
+        <div className="auth-input-wrap">
+          <MailIcon className="auth-input-icon" width={18} height={18} />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email address"
+            required
+            autoFocus
+            autoComplete="email"
+          />
+        </div>
       </label>
       <label className="auth-field">
-        <div className="auth-field-row">
-          <span>Password</span>
-          <a href="/forgot-password">Forgot password?</a>
+        <span>Password</span>
+        <div className="auth-input-wrap">
+          <LockIcon className="auth-input-icon" width={18} height={18} />
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            className="auth-input-toggle"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
+          </button>
         </div>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
       </label>
+      <div className="auth-field-row" style={{ marginTop: -6 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--eb-fg-muted)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            style={{ width: 15, height: 15, accentColor: 'var(--eb-primary)' }}
+          />
+          Remember me
+        </label>
+        <a href="/forgot-password">Forgot password?</a>
+      </div>
       {error && <p className="auth-error">{error}</p>}
       <button type="submit" className="auth-submit" disabled={loading}>
         {loading ? 'Signing in…' : 'Sign in'}
@@ -207,7 +234,18 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         </button>
       </div>
       {socialNote && <p className="auth-social-note">{socialNote}</p>}
-      <p className="auth-footnote">{role.contactNote}</p>
+      <p className="auth-footnote">
+        {(() => {
+          const [question, ...rest] = role.contactNote.split('? ');
+          const action = rest.join('? ');
+          return (
+            <>
+              {question}?{' '}
+              <a href="/help">{action}</a>
+            </>
+          );
+        })()}
+      </p>
     </form>
   );
 }
