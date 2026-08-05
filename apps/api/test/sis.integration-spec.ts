@@ -118,7 +118,7 @@ d('Student Information System (integration)', () => {
       .expect(403);
   });
 
-  it('enrolling a student provisions a real system identity and allocates a class', async () => {
+  it('enrolling a student provisions a real system identity and allocates a class, with real address/emergency contact fields', async () => {
     const res = await request(app.getHttpServer())
       .post('/v1/students')
       .set('authorization', `Bearer ${adminAToken}`)
@@ -126,6 +126,9 @@ d('Student Information System (integration)', () => {
         fullName: 'Wanjiru Kamau',
         dateOfBirth: '2017-03-14',
         gender: 'female',
+        address: '789 Uhuru Highway, Nairobi',
+        emergencyContactName: 'Peter Kamau',
+        emergencyContactPhone: '+254700111222',
         gradeLevel: 'G4',
         classStreamId,
         academicYear: 2026
@@ -134,6 +137,21 @@ d('Student Information System (integration)', () => {
     studentId = res.body.studentId;
     expect(res.body.status).toBe('active');
     expect(res.body.admissionNumber).toMatch(/^2026-[0-9A-F]{6}$/);
+    expect(res.body.address).toBe('789 Uhuru Highway, Nairobi');
+    expect(res.body.emergencyContactName).toBe('Peter Kamau');
+    expect(res.body.emergencyContactPhone).toBe('+254700111222');
+
+    // Also readable back via the real single-student lookup, not just
+    // in the immediate creation response.
+    const fetched = await request(app.getHttpServer())
+      .get(`/v1/students/${studentId}`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    expect(fetched.body).toMatchObject({
+      address: '789 Uhuru Highway, Nairobi',
+      emergencyContactName: 'Peter Kamau',
+      emergencyContactPhone: '+254700111222'
+    });
 
     // The provisioned identity is a real core.users row with a membership.
     // Read via the app role with a bound context — FORCE RLS blocks even

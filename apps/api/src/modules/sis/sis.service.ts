@@ -209,7 +209,10 @@ export class SisService {
       studentId: userId,
       admissionNumber,
       dateOfBirth: dto.dateOfBirth,
-      gender: dto.gender
+      gender: dto.gender,
+      address: dto.address,
+      emergencyContactName: dto.emergencyContactName,
+      emergencyContactPhone: dto.emergencyContactPhone
     });
     await this.repo.allocateToClass({
       studentId: userId,

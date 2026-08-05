@@ -23,6 +23,10 @@ import { ApiError, apiFetch } from '../../../../lib/api-client';
 export async function POST(request: Request): Promise<NextResponse> {
   let body: {
     fullName: string;
+    dateOfBirth?: string;
+    address?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
     gradeLevel: string;
     classStreamId?: string;
     academicYear: number;
@@ -42,6 +46,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       method: 'POST',
       body: JSON.stringify({
         fullName: body.fullName,
+        dateOfBirth: body.dateOfBirth,
+        address: body.address,
+        emergencyContactName: body.emergencyContactName,
+        emergencyContactPhone: body.emergencyContactPhone,
         gradeLevel: body.gradeLevel,
         classStreamId: body.classStreamId,
         academicYear: body.academicYear

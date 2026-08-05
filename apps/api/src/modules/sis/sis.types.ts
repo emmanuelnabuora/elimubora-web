@@ -17,6 +17,9 @@ export interface StudentProfile {
   admissionNumber: string;
   dateOfBirth: string | null;
   gender: 'male' | 'female' | null;
+  address: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
   status: StudentStatus;
   enrolledAt: string;
 }

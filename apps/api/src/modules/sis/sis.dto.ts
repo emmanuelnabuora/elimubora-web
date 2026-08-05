@@ -24,6 +24,9 @@ export const enrollStudentSchema = z.object({
   fullName: z.string().min(2).max(200),
   dateOfBirth: z.string().date().optional(),
   gender: z.enum(['male', 'female']).optional(),
+  address: z.string().max(500).optional(),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactPhone: z.string().min(7).max(20).optional(),
   gradeLevel: gradeLevelSchema,
   classStreamId: z.string().uuid().optional(),
   academicYear: z.number().int().min(2020).max(2100)

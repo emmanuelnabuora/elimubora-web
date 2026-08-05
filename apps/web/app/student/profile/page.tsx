@@ -6,6 +6,9 @@ interface MyProfile {
   admissionNumber: string;
   dateOfBirth: string | null;
   gender: string | null;
+  address: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
   status: string;
   classStreamId: string | null;
   className: string | null;
@@ -53,6 +56,21 @@ export default async function MyProfilePage() {
               <tr>
                 <td style={{ color: 'var(--eb-fg-muted)' }}>Gender</td>
                 <td style={{ textTransform: 'capitalize' }}>{profile.gender}</td>
+              </tr>
+            )}
+            {profile.address && (
+              <tr>
+                <td style={{ color: 'var(--eb-fg-muted)' }}>Address</td>
+                <td>{profile.address}</td>
+              </tr>
+            )}
+            {profile.emergencyContactName && (
+              <tr>
+                <td style={{ color: 'var(--eb-fg-muted)' }}>Emergency contact</td>
+                <td>
+                  {profile.emergencyContactName}
+                  {profile.emergencyContactPhone ? ` — ${profile.emergencyContactPhone}` : ''}
+                </td>
               </tr>
             )}
           </tbody>

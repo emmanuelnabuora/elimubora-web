@@ -17,6 +17,10 @@ interface ClassStream {
 export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }) {
   const router = useRouter();
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [address, setAddress] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [classStreamId, setClassStreamId] = useState('');
   const [academicYear] = useState(new Date().getFullYear());
@@ -41,6 +45,10 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           fullName,
+          dateOfBirth: dateOfBirth || undefined,
+          address: address || undefined,
+          emergencyContactName: emergencyContactName || undefined,
+          emergencyContactPhone: emergencyContactPhone || undefined,
           gradeLevel,
           classStreamId: classStreamId || undefined,
           academicYear,
@@ -68,6 +76,10 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
         );
       }
       setFullName('');
+      setDateOfBirth('');
+      setAddress('');
+      setEmergencyContactName('');
+      setEmergencyContactPhone('');
       setGradeLevel('');
       setClassStreamId('');
       setAddParent(false);
@@ -92,6 +104,10 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
         <label className="admin-field">
           <span>Full name</span>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={2} />
+        </label>
+        <label className="admin-field">
+          <span>Date of birth (optional)</span>
+          <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
         </label>
         <label className="admin-field">
           <span>Grade level</span>
@@ -129,6 +145,22 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
         <label className="admin-field">
           <span>Academic year</span>
           <input value={academicYear} disabled />
+        </label>
+      </div>
+
+      <label className="admin-field" style={{ marginBottom: 'var(--eb-space-3)' }}>
+        <span>Address (optional)</span>
+        <input value={address} onChange={(e) => setAddress(e.target.value)} />
+      </label>
+
+      <div className="admin-form-row">
+        <label className="admin-field">
+          <span>Emergency contact name (optional)</span>
+          <input value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
+        </label>
+        <label className="admin-field">
+          <span>Emergency contact phone (optional)</span>
+          <input value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} />
         </label>
       </div>
 

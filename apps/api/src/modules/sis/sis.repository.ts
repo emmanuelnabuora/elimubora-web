@@ -175,10 +175,14 @@ export class SisRepository {
         admission_number: string;
         date_of_birth: Date | null;
         gender: 'male' | 'female' | null;
+        address: string | null;
+        emergency_contact_name: string | null;
+        emergency_contact_phone: string | null;
         status: StudentProfile['status'];
         enrolled_at: Date;
       }>(
-        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender, sp.status, sp.enrolled_at
+        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender,
+                sp.address, sp.emergency_contact_name, sp.emergency_contact_phone, sp.status, sp.enrolled_at
            FROM sis.student_profiles sp
            JOIN sis.student_guardians sg ON sg.student_id = sp.student_id
            JOIN sis.guardians g ON g.id = sg.guardian_id
@@ -193,6 +197,9 @@ export class SisRepository {
         admissionNumber: r.admission_number,
         dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
         gender: r.gender,
+        address: r.address,
+        emergencyContactName: r.emergency_contact_name,
+        emergencyContactPhone: r.emergency_contact_phone,
         status: r.status,
         enrolledAt: r.enrolled_at.toISOString()
       }));
@@ -206,13 +213,24 @@ export class SisRepository {
     admissionNumber: string;
     dateOfBirth?: string;
     gender?: 'male' | 'female';
+    address?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
   }): Promise<StudentProfile> {
     return this.db.withTenantTransaction(async (client) => {
       await client.query(
         `INSERT INTO sis.student_profiles
-           (student_id, tenant_id, admission_number, date_of_birth, gender)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4)`,
-        [input.studentId, input.admissionNumber, input.dateOfBirth ?? null, input.gender ?? null]
+           (student_id, tenant_id, admission_number, date_of_birth, gender, address, emergency_contact_name, emergency_contact_phone)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6, $7)`,
+        [
+          input.studentId,
+          input.admissionNumber,
+          input.dateOfBirth ?? null,
+          input.gender ?? null,
+          input.address ?? null,
+          input.emergencyContactName ?? null,
+          input.emergencyContactPhone ?? null
+        ]
       );
       await this.audit.record(client, {
         action: 'student.enrolled',
@@ -231,6 +249,9 @@ export class SisRepository {
         admissionNumber: input.admissionNumber,
         dateOfBirth: input.dateOfBirth ?? null,
         gender: input.gender ?? null,
+        address: input.address ?? null,
+        emergencyContactName: input.emergencyContactName ?? null,
+        emergencyContactPhone: input.emergencyContactPhone ?? null,
         status: 'active',
         enrolledAt: new Date().toISOString()
       };
@@ -244,10 +265,14 @@ export class SisRepository {
         admission_number: string;
         date_of_birth: Date | null;
         gender: 'male' | 'female' | null;
+        address: string | null;
+        emergency_contact_name: string | null;
+        emergency_contact_phone: string | null;
         status: StudentProfile['status'];
         enrolled_at: Date;
       }>(
-        `SELECT student_id, admission_number, date_of_birth, gender, status, enrolled_at
+        `SELECT student_id, admission_number, date_of_birth, gender, address,
+                emergency_contact_name, emergency_contact_phone, status, enrolled_at
            FROM sis.student_profiles
           WHERE student_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
         [studentId]
@@ -259,6 +284,9 @@ export class SisRepository {
             admissionNumber: r.admission_number,
             dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
             gender: r.gender,
+            address: r.address,
+            emergencyContactName: r.emergency_contact_name,
+            emergencyContactPhone: r.emergency_contact_phone,
             status: r.status,
             enrolledAt: r.enrolled_at.toISOString()
           }
@@ -512,6 +540,9 @@ export class SisRepository {
     admissionNumber: string;
     dateOfBirth: string | null;
     gender: 'male' | 'female' | null;
+    address: string | null;
+    emergencyContactName: string | null;
+    emergencyContactPhone: string | null;
     status: StudentProfile['status'];
     classStreamId: string | null;
     className: string | null;
@@ -524,12 +555,16 @@ export class SisRepository {
         admission_number: string;
         date_of_birth: Date | null;
         gender: 'male' | 'female' | null;
+        address: string | null;
+        emergency_contact_name: string | null;
+        emergency_contact_phone: string | null;
         status: StudentProfile['status'];
         class_stream_id: string | null;
         class_name: string | null;
         grade_level: string | null;
       }>(
-        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender, sp.status,
+        `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender,
+                sp.address, sp.emergency_contact_name, sp.emergency_contact_phone, sp.status,
                 ca.class_stream_id, cs.name AS class_name, cs.grade_level
            FROM sis.student_profiles sp
            JOIN core.users u ON u.id = sp.student_id
@@ -547,6 +582,9 @@ export class SisRepository {
         admissionNumber: r.admission_number,
         dateOfBirth: r.date_of_birth ? r.date_of_birth.toISOString().slice(0, 10) : null,
         gender: r.gender,
+        address: r.address,
+        emergencyContactName: r.emergency_contact_name,
+        emergencyContactPhone: r.emergency_contact_phone,
         status: r.status,
         classStreamId: r.class_stream_id,
         className: r.class_name,

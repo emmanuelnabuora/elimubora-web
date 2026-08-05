@@ -13,6 +13,14 @@ interface StudentListItem {
   gradeLevel: string | null;
 }
 
+interface StudentProfile {
+  dateOfBirth: string | null;
+  gender: string | null;
+  address: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+}
+
 interface Guardian {
   id: string;
   fullName: string;
@@ -31,8 +39,9 @@ interface TenantUser {
 export default async function StudentDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
 
-  const [students, guardians, users] = await Promise.all([
+  const [students, profile, guardians, users] = await Promise.all([
     apiFetch<StudentListItem[]>('/v1/students'),
+    apiFetch<StudentProfile>(`/v1/students/${studentId}`),
     apiFetch<Guardian[]>(`/v1/students/${studentId}/guardians`),
     apiFetch<TenantUser[]>('/v1/users?limit=100')
   ]);
@@ -51,6 +60,34 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           Admission #{student.admissionNumber} &middot; {student.className ?? 'No class assigned'}
         </p>
       )}
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Details</h2>
+        <table className="data-table">
+          <tbody>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)', width: 200 }}>Date of birth</td>
+              <td>{profile.dateOfBirth ?? '—'}</td>
+            </tr>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Gender</td>
+              <td style={{ textTransform: 'capitalize' }}>{profile.gender ?? '—'}</td>
+            </tr>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Address</td>
+              <td>{profile.address ?? '—'}</td>
+            </tr>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Emergency contact</td>
+              <td>
+                {profile.emergencyContactName
+                  ? `${profile.emergencyContactName}${profile.emergencyContactPhone ? ` — ${profile.emergencyContactPhone}` : ''}`
+                  : '—'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div className="admin-section">
         <h2 className="admin-section-title">Portal access</h2>
