@@ -1,5 +1,6 @@
 import { getCurrentUser } from '../../../lib/get-current-user';
 import { apiFetch } from '../../../lib/api-client';
+import { AddOwnTimetableSlotForm } from './AddOwnTimetableSlotForm';
 
 interface TimetableSlot {
   id: string;
@@ -22,6 +23,11 @@ interface Room {
   name: string;
 }
 
+interface ClassStream {
+  id: string;
+  name: string;
+}
+
 const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function minutesToTime(min: number): string {
@@ -35,11 +41,13 @@ function minutesToTime(min: number): string {
 export default async function TeacherTimetablePage() {
   const result = await getCurrentUser();
   const teacherId = result!.user.id;
+  const academicYear = new Date().getFullYear();
 
-  const [slots, courses, rooms] = await Promise.all([
-    apiFetch<TimetableSlot[]>(`/v1/timetable/teacher/${teacherId}?academicYear=${new Date().getFullYear()}`),
+  const [slots, courses, rooms, classStreams] = await Promise.all([
+    apiFetch<TimetableSlot[]>(`/v1/timetable/teacher/${teacherId}?academicYear=${academicYear}`),
     apiFetch<Course[]>('/v1/courses'),
-    apiFetch<Room[]>('/v1/rooms')
+    apiFetch<Room[]>('/v1/rooms'),
+    apiFetch<ClassStream[]>('/v1/class-streams')
   ]);
 
   const courseTitle = (id: string) => courses.find((c) => c.id === id)?.title ?? 'Unknown course';
@@ -48,6 +56,17 @@ export default async function TeacherTimetablePage() {
   return (
     <div>
       <h1 className="admin-page-title">My Timetable</h1>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Add a slot to my schedule</h2>
+        <AddOwnTimetableSlotForm
+          teacherId={teacherId}
+          classStreams={classStreams}
+          courses={courses}
+          rooms={rooms}
+          academicYear={academicYear}
+        />
+      </div>
 
       <div className="admin-section">
         {slots.length === 0 ? (

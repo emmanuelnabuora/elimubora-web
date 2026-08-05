@@ -141,22 +141,55 @@ d('School Administration (integration)', () => {
     await db?.end();
   });
 
-  it('a teacher cannot create a timetable slot (admin-only)', async () => {
+  it('a teacher can create a timetable slot for themselves, but not for another teacher', async () => {
     const teacherToken = await login(teacherEmail);
+
+    // Scheduling someone else — still forbidden.
     await request(app.getHttpServer())
       .post('/v1/timetable')
       .set('authorization', `Bearer ${teacherToken}`)
       .send({
         classStreamId,
         courseId,
-        teacherId,
+        teacherId: teacher2Id,
         roomId,
         academicYear: 2026,
-        dayOfWeek: 1,
+        dayOfWeek: 5,
         startTime: '08:00',
         endTime: '09:00'
       })
       .expect(403);
+
+    // Scheduling themselves — the actual feature: teachers can now
+    // build their own timetable, not just have admins build it for
+    // them. Uses its own dedicated class/room rather than the shared
+    // fixtures other tests below count slots against, so this doesn't
+    // silently change their expected totals.
+    const ownClass = await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Self-Schedule Test Class', gradeLevel: 'G3', academicYear: 2026 })
+      .expect(201);
+    const ownRoom = await request(app.getHttpServer())
+      .post('/v1/rooms')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Self-Schedule Test Room', roomType: 'classroom' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/v1/timetable')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({
+        classStreamId: ownClass.body.id,
+        courseId,
+        teacherId,
+        roomId: ownRoom.body.id,
+        academicYear: 2026,
+        dayOfWeek: 5,
+        startTime: '08:00',
+        endTime: '09:00'
+      })
+      .expect(201);
   });
 
   it('creates the first timetable slot', async () => {

@@ -46,7 +46,12 @@ export class SchoolAdminService {
     user: AuthenticatedUser,
     dto: CreateTimetableSlotDto
   ): Promise<TimetableSlot> {
-    this.requireAdmin(user);
+    if (!STAFF_ROLES.has(user.role)) {
+      throw new ForbiddenException('Only school administration or teachers can perform this action');
+    }
+    if (!ADMIN_ROLES.has(user.role) && dto.teacherId !== user.userId) {
+      throw new ForbiddenException('Teachers can only create timetable slots for themselves');
+    }
     return this.repo.createTimetableSlot({
       classStreamId: dto.classStreamId,
       courseId: dto.courseId,
