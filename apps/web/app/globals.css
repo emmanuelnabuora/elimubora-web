@@ -896,6 +896,27 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* =================================================================
+   Landing page: the supplied design brief calls for the same light,
+   purple-accented look already established for .sa-shell (the
+   dashboards), not this file's default dark forest-green register.
+   Reuses those exact values rather than inventing a second palette —
+   scoped to .landing-theme so the rest of the site (auth pages
+   linked from elsewhere, /login/[role] on its own) keeps the
+   original dark-green identity untouched.
+================================================================= */
+.landing-theme {
+  background: #f7f8fc;
+  color: var(--eb-fg);
+  --eb-bg: #f7f8fc;
+  --eb-bg-panel: #f4f1ff;
+  --eb-fg: #12182a;
+  --eb-fg-muted: #687089;
+  --eb-line: #e4e8f0;
+  --eb-primary: #5546e8;
+  --eb-green-100: #f4f1ff;
+}
+
+/* =================================================================
    School Administrator Dashboard — a distinct visual system from
    the rest of the app (dark forest-green), scoped entirely under
    .sa-shell so Teacher/Student/Parent dashboards, which share some

@@ -18,7 +18,8 @@ type Stage = 'credentials' | 'mfa' | 'select_institution';
  *  server-to-client-component boundary, and this form never renders it anyway. */
 type LoginFormRole = Omit<RoleConfig, 'icon'>;
 
-export function LoginForm({ role }: { role: LoginFormRole }) {
+export function LoginForm({ role, embedded = false }: { role: LoginFormRole; embedded?: boolean }) {
+  const cardClass = embedded ? undefined : 'auth-card';
   const router = useRouter();
   const [stage, setStage] = useState<Stage>('credentials');
   const [email, setEmail] = useState('');
@@ -96,7 +97,7 @@ export function LoginForm({ role }: { role: LoginFormRole }) {
 
   if (stage === 'select_institution') {
     return (
-      <div className="auth-card" style={{ ['--door-accent' as string]: role.accent }}>
+      <div className={cardClass} style={{ ['--door-accent' as string]: role.accent }}>
         <h2 className="auth-step-label">Choose your institution</h2>
         <p className="auth-desc">Your account is linked to more than one institution.</p>
         <div className="institution-list">
@@ -121,7 +122,7 @@ export function LoginForm({ role }: { role: LoginFormRole }) {
   if (stage === 'mfa') {
     return (
       <form
-        className="auth-card"
+        className={cardClass}
         onSubmit={handleMfaSubmit}
         style={{ ['--door-accent' as string]: role.accent }}
       >
@@ -150,14 +151,16 @@ export function LoginForm({ role }: { role: LoginFormRole }) {
 
   return (
     <form
-      className="auth-card"
+      className={cardClass}
       onSubmit={handleCredentialsSubmit}
       style={{ ['--door-accent' as string]: role.accent }}
     >
-      <div>
-        <h2>{role.label} sign in</h2>
-        <p className="auth-welcome">Welcome back! Please sign in to continue.</p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2>{role.label} sign in</h2>
+          <p className="auth-welcome">Welcome back! Please sign in to continue.</p>
+        </div>
+      )}
       <label className="auth-field">
         <span>Email</span>
         <input
