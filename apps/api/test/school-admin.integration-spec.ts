@@ -301,6 +301,22 @@ d('School Administration (integration)', () => {
       .expect(403);
   });
 
+  it('a duplicate class stream (same name/year) is a clean 409, not a raw 500 — a real bug found live in production', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Grade 6 Silver', gradeLevel: 'G6', academicYear: 2026 })
+      .expect(409);
+  });
+
+  it('a duplicate room name is also a clean 409 — same class of bug, fixed proactively before it hit production', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/rooms')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Room A', capacity: 20, roomType: 'lab' })
+      .expect(409);
+  });
+
   it('staff can submit a leave request; approving it is admin-only and self-approval is blocked', async () => {
     const teacherToken = await login(teacherEmail);
     const leave = await request(app.getHttpServer())

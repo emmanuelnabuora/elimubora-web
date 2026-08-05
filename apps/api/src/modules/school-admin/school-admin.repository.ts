@@ -11,6 +11,15 @@ import type {
   TimetableSlot
 } from './school-admin.types';
 
+function isUniqueViolation(err: unknown, constraintName: string): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505' &&
+    (err as { constraint?: string }).constraint === constraintName
+  );
+}
+
 /** Postgres SQLSTATE for exclusion_violation (EXCLUDE constraint hit). */
 const EXCLUSION_VIOLATION = '23P01';
 
@@ -96,12 +105,25 @@ export class SchoolAdminRepository {
   async createRoom(input: { name: string; capacity?: number; roomType: RoomType }): Promise<Room> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
-      const { rows } = await client.query<RoomRow>(
-        `INSERT INTO schooladmin.rooms (id, tenant_id, name, capacity, room_type)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4)
-         RETURNING *`,
-        [id, input.name, input.capacity ?? null, input.roomType]
-      );
+      let rows: RoomRow[];
+      try {
+        ({ rows } = await client.query<RoomRow>(
+          `INSERT INTO schooladmin.rooms (id, tenant_id, name, capacity, room_type)
+           VALUES ($1, core.current_tenant_id(), $2, $3, $4)
+           RETURNING *`,
+          [id, input.name, input.capacity ?? null, input.roomType]
+        ));
+      } catch (err) {
+        // Same class of bug as class_streams and invoices/fee_structures
+        // (all found and fixed the same night) -- caught proactively
+        // here before anyone hit it live, once the pattern became
+        // clear: a room with this name already exists
+        // (rooms_tenant_id_name_key).
+        if (isUniqueViolation(err, 'rooms_tenant_id_name_key')) {
+          throw new ConflictException(`A room named "${input.name}" already exists.`);
+        }
+        throw err;
+      }
       await this.audit.record(client, {
         action: 'room.created',
         entityType: 'room',

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../core/audit/audit.service';
 import { DatabaseService } from '../../core/database/database.service';
 import { OutboxService } from '../../core/outbox/outbox.service';
@@ -14,6 +14,15 @@ import type {
   Transfer,
   TransferStatus
 } from './sis.types';
+
+function isUniqueViolation(err: unknown, constraintName: string): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505' &&
+    (err as { constraint?: string }).constraint === constraintName
+  );
+}
 
 /**
  * All SIS SQL. Every write is a tenant-scoped transaction (RLS-backed
@@ -313,12 +322,27 @@ export class SisRepository {
   }): Promise<ClassStream> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
-      await client.query(
-        `INSERT INTO sis.class_streams
-           (id, tenant_id, name, grade_level, academic_year, homeroom_teacher_id)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5)`,
-        [id, input.name, input.gradeLevel, input.academicYear, input.homeroomTeacherId ?? null]
-      );
+      try {
+        await client.query(
+          `INSERT INTO sis.class_streams
+             (id, tenant_id, name, grade_level, academic_year, homeroom_teacher_id)
+           VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5)`,
+          [id, input.name, input.gradeLevel, input.academicYear, input.homeroomTeacherId ?? null]
+        );
+      } catch (err) {
+        // A real bug found live in production, same class as the
+        // invoice/fee-structure one fixed earlier tonight: a class
+        // with this exact name already exists for this academic year
+        // (class_streams_tenant_id_name_academic_year_key), and
+        // nothing was catching that -- it surfaced as a raw,
+        // unhandled 500 instead of a clean, understandable message.
+        if (isUniqueViolation(err, 'class_streams_tenant_id_name_academic_year_key')) {
+          throw new ConflictException(
+            `A class named "${input.name}" already exists for ${input.academicYear}.`
+          );
+        }
+        throw err;
+      }
       await this.audit.record(client, {
         action: 'class_stream.created',
         entityType: 'class_stream',
