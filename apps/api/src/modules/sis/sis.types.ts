@@ -50,6 +50,7 @@ export interface AdmissionApplication {
   reviewedBy: string | null;
   decidedAt: string | null;
   notes: string | null;
+  studentId: string | null;
 }
 
 export interface Transfer {

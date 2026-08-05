@@ -220,10 +220,16 @@ export class SisService {
       academicYear: dto.academicYear
     });
     if (dto.applicationId) {
+      // Handles both paths: an application not yet decided (admits it
+      // now, as before) and one already admitted earlier through the
+      // Admissions page (decideApplication's WHERE clause won't touch
+      // it in that case, which is fine -- the status is already
+      // correct). Either way, always record which student it became.
       await this.repo.decideApplication(dto.applicationId, {
         status: 'admitted',
         reviewedBy: user.userId
       });
+      await this.repo.linkApplicationToStudent(dto.applicationId, userId);
     }
     return profile;
   }

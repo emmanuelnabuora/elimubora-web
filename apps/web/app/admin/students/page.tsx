@@ -19,7 +19,12 @@ interface ClassStream {
   academicYear: number;
 }
 
-export default async function StudentsPage() {
+export default async function StudentsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ applicationId?: string; fullName?: string; gradeLevel?: string; parentFullName?: string }>;
+}) {
+  const params = await searchParams;
   const [students, classStreams] = await Promise.all([
     apiFetch<StudentListItem[]>('/v1/students'),
     apiFetch<ClassStream[]>('/v1/class-streams')
@@ -40,8 +45,24 @@ export default async function StudentsPage() {
       </div>
 
       <div className="admin-section">
-        <h2 className="admin-section-title">Enrol a new student</h2>
-        <AddStudentForm classStreams={classStreams} />
+        <h2 className="admin-section-title">
+          {params.applicationId ? `Enrol ${params.fullName ?? 'this candidate'}` : 'Enrol a new student'}
+        </h2>
+        {params.applicationId && (
+          <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0, marginBottom: 12 }}>
+            Pre-filled from their admitted application — confirm the details below and submit to complete their
+            enrollment.
+          </p>
+        )}
+        <AddStudentForm
+          classStreams={classStreams}
+          initialValues={{
+            applicationId: params.applicationId,
+            fullName: params.fullName,
+            gradeLevel: params.gradeLevel,
+            parentFullName: params.parentFullName
+          }}
+        />
       </div>
 
       <div className="admin-section">

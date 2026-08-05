@@ -456,6 +456,56 @@ d('Student Information System (integration)', () => {
     const decided = afterDecision.body.find((a: { id: string }) => a.id === app1.body.id);
     expect(decided.status).toBe('admitted');
     expect(decided.notes).toBe('Strong interview');
+    expect(decided.studentId).toBeNull();
+  });
+
+  it('enrolling a student from an already-admitted application links the two, closing the admissions loop', async () => {
+    const application = await request(app.getHttpServer())
+      .post('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        candidateName: 'Enroll Loop Candidate',
+        guardianName: 'Enroll Loop Guardian',
+        guardianPhone: '0700111222',
+        gradeLevelApplied: 'G9'
+      })
+      .expect(201);
+
+    // Admitted first, as a standalone decision, exactly like an admin
+    // clicking "Admit" on the Admissions page before ever enrolling
+    // anyone -- decideApplication's own WHERE clause (submitted/
+    // under_review only) means the application is no longer
+    // "decidable" by the time enrollment happens next.
+    await request(app.getHttpServer())
+      .patch(`/v1/admissions/${application.body.id}/decision`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ status: 'admitted' })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ name: 'Enroll Loop G9', gradeLevel: 'G9', academicYear: 2026 })
+      .expect(201);
+
+    const enrolled = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        fullName: 'Enroll Loop Candidate',
+        gradeLevel: 'G9',
+        academicYear: 2026,
+        applicationId: application.body.id
+      })
+      .expect(201);
+
+    const afterEnroll = await request(app.getHttpServer())
+      .get('/v1/admissions')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const linked = afterEnroll.body.find((a: { id: string }) => a.id === application.body.id);
+    expect(linked.studentId).toBe(enrolled.body.studentId);
+    expect(linked.status).toBe('admitted');
   });
 
   it('GET /students/me — a learner sees their own profile, and no one else\u2019s', async () => {

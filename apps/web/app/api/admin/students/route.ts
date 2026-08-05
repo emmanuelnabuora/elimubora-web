@@ -30,6 +30,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     gradeLevel: string;
     classStreamId?: string;
     academicYear: number;
+    applicationId?: string;
     parentFullName?: string;
     parentEmail?: string;
     parentPhysicalAddress?: string;
@@ -52,7 +53,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         emergencyContactPhone: body.emergencyContactPhone,
         gradeLevel: body.gradeLevel,
         classStreamId: body.classStreamId,
-        academicYear: body.academicYear
+        academicYear: body.academicYear,
+        applicationId: body.applicationId
       })
     });
   } catch (err) {

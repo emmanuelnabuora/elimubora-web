@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { SubmitApplicationForm } from './SubmitApplicationForm';
 import { ApplicationsList } from './ApplicationsList';
@@ -10,6 +11,7 @@ interface Application {
   gradeLevelApplied: string;
   status: string;
   notes: string | null;
+  studentId: string | null;
 }
 
 export default async function AdmissionsPage() {
@@ -45,6 +47,7 @@ export default async function AdmissionsPage() {
                 <th>Grade</th>
                 <th>Guardian</th>
                 <th>Decision</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -59,6 +62,22 @@ export default async function AdmissionsPage() {
                     >
                       {a.status}
                     </span>
+                  </td>
+                  <td>
+                    {a.status === 'admitted' &&
+                      (a.studentId ? (
+                        <Link href={`/admin/students/${a.studentId}`} className="admin-nav-link">
+                          View student &rarr;
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/admin/students?applicationId=${a.id}&fullName=${encodeURIComponent(a.candidateName)}&gradeLevel=${encodeURIComponent(a.gradeLevelApplied)}&parentFullName=${encodeURIComponent(a.guardianName)}`}
+                          className="admin-nav-link"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Enrol &rarr;
+                        </Link>
+                      ))}
                   </td>
                 </tr>
               ))}

@@ -690,7 +690,8 @@ export class SisRepository {
         status: 'submitted',
         reviewedBy: null,
         decidedAt: null,
-        notes: null
+        notes: null,
+        studentId: null
       };
     });
   }
@@ -708,6 +709,7 @@ export class SisRepository {
         reviewed_by: string | null;
         decided_at: Date | null;
         notes: string | null;
+        student_id: string | null;
       }>(
         `SELECT * FROM sis.admission_applications
           WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
@@ -725,7 +727,8 @@ export class SisRepository {
             status: r.status,
             reviewedBy: r.reviewed_by,
             decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
-            notes: r.notes
+            notes: r.notes,
+            studentId: r.student_id
           }
         : null;
     });
@@ -750,6 +753,7 @@ export class SisRepository {
         reviewed_by: string | null;
         decided_at: Date | null;
         notes: string | null;
+        student_id: string | null;
       }>(
         `SELECT * FROM sis.admission_applications
           WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
@@ -767,7 +771,8 @@ export class SisRepository {
         status: r.status,
         reviewedBy: r.reviewed_by,
         decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
-        notes: r.notes
+        notes: r.notes,
+        studentId: r.student_id
       }));
     });
   }
@@ -792,6 +797,27 @@ export class SisRepository {
         });
       }
       return res.rowCount === 1;
+    });
+  }
+
+  /**
+   * Records which real student an application became, once enrolled.
+   * Deliberately separate from decideApplication rather than reusing
+   * its UPDATE -- that query's WHERE clause only matches applications
+   * still 'submitted' or 'under_review', so calling it again on an
+   * application that's already 'admitted' (exactly the case here --
+   * an admin marks it admitted first, then enrols the student
+   * afterward, by which point the status is no longer decidable)
+   * would silently affect zero rows.
+   */
+  async linkApplicationToStudent(applicationId: string, studentId: string): Promise<void> {
+    return this.db.withTenantTransaction(async (client) => {
+      await client.query(
+        `UPDATE sis.admission_applications
+            SET student_id = $2
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND status = 'admitted'`,
+        [applicationId, studentId]
+      );
     });
   }
 

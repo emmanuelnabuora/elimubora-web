@@ -14,18 +14,32 @@ interface ClassStream {
   academicYear: number;
 }
 
-export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }) {
+interface InitialValues {
+  applicationId?: string;
+  fullName?: string;
+  gradeLevel?: string;
+  parentFullName?: string;
+}
+
+export function AddStudentForm({
+  classStreams,
+  initialValues
+}: {
+  classStreams: ClassStream[];
+  initialValues?: InitialValues;
+}) {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
+  const applicationId = initialValues?.applicationId;
+  const [fullName, setFullName] = useState(initialValues?.fullName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [address, setAddress] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
-  const [gradeLevel, setGradeLevel] = useState('');
+  const [gradeLevel, setGradeLevel] = useState(initialValues?.gradeLevel ?? '');
   const [classStreamId, setClassStreamId] = useState('');
   const [academicYear] = useState(new Date().getFullYear());
-  const [addParent, setAddParent] = useState(false);
-  const [parentFullName, setParentFullName] = useState('');
+  const [addParent, setAddParent] = useState(Boolean(initialValues?.parentFullName));
+  const [parentFullName, setParentFullName] = useState(initialValues?.parentFullName ?? '');
   const [parentEmail, setParentEmail] = useState('');
   const [parentPhysicalAddress, setParentPhysicalAddress] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,6 +66,7 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
           gradeLevel,
           classStreamId: classStreamId || undefined,
           academicYear,
+          applicationId: applicationId || undefined,
           ...(addParent
             ? {
                 parentFullName,
@@ -64,6 +79,17 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
       const data = await res.json();
       if (!res.ok) {
         setError(data.message ?? 'Could not enrol this student. Try again.');
+        return;
+      }
+      if (applicationId) {
+        // This form instance's applicationId is fixed for its lifetime
+        // (it comes from a prop, seeded once from the URL) -- if we
+        // just reset and stayed here, submitting again would send that
+        // same applicationId a second time. Closing the loop by
+        // navigating away is simpler and safer than tracking whether
+        // this particular submission has already "used up" the link.
+        router.push('/admin/admissions');
+        router.refresh();
         return;
       }
       if (data.parentWarning) {
