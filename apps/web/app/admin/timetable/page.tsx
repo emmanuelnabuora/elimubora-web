@@ -1,6 +1,7 @@
 import { apiFetch } from '../../../lib/api-client';
 import { ClassStreamSelector } from './ClassStreamSelector';
 import { AddTimetableSlotForm } from './AddTimetableSlotForm';
+import { CreateClassStreamForm } from '../../../components/CreateClassStreamForm';
 
 interface ClassStream {
   id: string;
@@ -72,6 +73,11 @@ export default async function TimetablePage({
   return (
     <div>
       <h1 className="admin-page-title">Timetable</h1>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Create a class</h2>
+        <CreateClassStreamForm />
+      </div>
 
       <div className="admin-section">
         <h2 className="admin-section-title">View a class's schedule</h2>

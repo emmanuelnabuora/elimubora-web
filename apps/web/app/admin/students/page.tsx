@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { AddStudentForm } from './AddStudentForm';
+import { CreateClassStreamForm } from '../../../components/CreateClassStreamForm';
 
 interface StudentListItem {
   studentId: string;
@@ -27,6 +28,16 @@ export default async function StudentsPage() {
   return (
     <div>
       <h1 className="admin-page-title">Students</h1>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Classes</h2>
+        {classStreams.length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0, marginBottom: 12 }}>
+            No classes exist yet — you&rsquo;ll need at least one before you can enrol a student.
+          </p>
+        )}
+        <CreateClassStreamForm />
+      </div>
 
       <div className="admin-section">
         <h2 className="admin-section-title">Enrol a new student</h2>
