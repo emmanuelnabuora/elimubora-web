@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../lib/api-client';
+import { CreateCourseForm } from '../../../components/CreateCourseForm';
 
 interface Course {
   id: string;
@@ -22,6 +23,11 @@ export default async function SubjectsPage() {
   return (
     <div>
       <h1 className="admin-page-title">Subjects</h1>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Create a course</h2>
+        <CreateCourseForm />
+      </div>
 
       {subjects.length === 0 ? (
         <p className="admin-empty">No courses exist yet — subjects are grouped from your courses' learning areas.</p>
