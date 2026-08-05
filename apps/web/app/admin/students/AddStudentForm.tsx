@@ -33,7 +33,7 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
       const res = await fetch('/api/admin/students', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ fullName, gradeLevel, classStreamId, academicYear })
+        body: JSON.stringify({ fullName, gradeLevel, classStreamId: classStreamId || undefined, academicYear })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -86,16 +86,9 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
       </div>
       <div className="admin-form-row">
         <label className="admin-field">
-          <span>Class stream</span>
-          <select
-            value={classStreamId}
-            onChange={(e) => setClassStreamId(e.target.value)}
-            required
-            disabled={!gradeLevel}
-          >
-            <option value="" disabled>
-              {gradeLevel ? 'Select a class' : 'Choose a grade first'}
-            </option>
+          <span>Class stream (optional)</span>
+          <select value={classStreamId} onChange={(e) => setClassStreamId(e.target.value)} disabled={!gradeLevel}>
+            <option value="">{gradeLevel ? 'Auto-assign (recommended)' : 'Choose a grade first'}</option>
             {filteredStreams.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.academicYear})

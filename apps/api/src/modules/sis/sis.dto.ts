@@ -25,7 +25,7 @@ export const enrollStudentSchema = z.object({
   dateOfBirth: z.string().date().optional(),
   gender: z.enum(['male', 'female']).optional(),
   gradeLevel: gradeLevelSchema,
-  classStreamId: z.string().uuid(),
+  classStreamId: z.string().uuid().optional(),
   academicYear: z.number().int().min(2020).max(2100)
 });
 export type EnrollStudentDto = z.infer<typeof enrollStudentSchema>;

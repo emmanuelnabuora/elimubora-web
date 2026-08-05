@@ -388,6 +388,33 @@ export class SisRepository {
   }
 
   /**
+   * Resolves which class stream a newly enrolled student should go
+   * into when the admin didn't pick one explicitly — the least-
+   * populated stream matching this grade/year, so students land
+   * somewhere reasonable rather than piling into whichever section
+   * happens to be listed first. Returns null if no stream exists yet
+   * for this grade/year at all (the caller turns that into a clear
+   * error rather than a confusing allocation failure).
+   */
+  async findClassStreamForAutoAssign(gradeLevel: string, academicYear: number): Promise<string | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ id: string }>(
+        `SELECT cs.id
+           FROM sis.class_streams cs
+           LEFT JOIN sis.class_allocations ca
+             ON ca.class_stream_id = cs.id AND ca.status = 'active' AND ca.deleted_at IS NULL
+          WHERE cs.tenant_id = core.current_tenant_id() AND cs.deleted_at IS NULL
+            AND cs.grade_level = $1 AND cs.academic_year = $2
+          GROUP BY cs.id, cs.name
+          ORDER BY count(ca.id) ASC, cs.name ASC
+          LIMIT 1`,
+        [gradeLevel, academicYear]
+      );
+      return rows[0]?.id ?? null;
+    });
+  }
+
+  /**
    * All active students in the tenant, with their name (from
    * core.users — student_profiles itself has no name column) and
    * current class allocation if any. A real gap the admin dashboard

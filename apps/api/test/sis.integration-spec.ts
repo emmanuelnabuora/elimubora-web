@@ -614,4 +614,72 @@ d('Student Information System (integration)', () => {
       .send({ email: `nobody-${Date.now()}@school.ke`, password: 'A-genuinely-long-password-1' })
       .expect(404);
   });
+
+  it('enrolling without classStreamId auto-assigns to the only matching stream', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ name: 'Grade 7 Only Section', gradeLevel: 'G7', academicYear: 2026 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Auto Assign Student', gradeLevel: 'G7', academicYear: 2026 })
+      .expect(201);
+
+    const list = await request(app.getHttpServer())
+      .get('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const enrolled = list.body.find((s: { fullName: string }) => s.fullName === 'Auto Assign Student');
+    expect(enrolled.className).toBe('Grade 7 Only Section');
+  });
+
+  it('with multiple matching streams, auto-assignment load-balances to the least-populated one', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ name: 'Grade 8 Alpha', gradeLevel: 'G8', academicYear: 2026 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/v1/class-streams')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ name: 'Grade 8 Beta', gradeLevel: 'G8', academicYear: 2026 })
+      .expect(201);
+
+    // Both start at zero students — tie-broken alphabetically, so the
+    // first enrollment should land in "Grade 8 Alpha".
+    await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Load Balance One', gradeLevel: 'G8', academicYear: 2026 })
+      .expect(201);
+    // Now Alpha has 1, Beta has 0 — the second enrollment should go
+    // to Beta, proving this is genuinely counting allocations rather
+    // than always picking the same (e.g. first-created) stream.
+    await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Load Balance Two', gradeLevel: 'G8', academicYear: 2026 })
+      .expect(201);
+
+    const list = await request(app.getHttpServer())
+      .get('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const one = list.body.find((s: { fullName: string }) => s.fullName === 'Load Balance One');
+    const two = list.body.find((s: { fullName: string }) => s.fullName === 'Load Balance Two');
+    expect(one.className).toBe('Grade 8 Alpha');
+    expect(two.className).toBe('Grade 8 Beta');
+  });
+
+  it('enrolling without classStreamId when no stream exists for that grade/year is a clear 400, not a confusing failure', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'No Class Available', gradeLevel: 'G12', academicYear: 2026 })
+      .expect(400);
+    expect(res.body.message).toContain('No class exists yet for G12 in 2026');
+  });
 });

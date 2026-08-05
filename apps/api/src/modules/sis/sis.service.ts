@@ -181,6 +181,24 @@ export class SisService {
    */
   async enrollStudent(user: AuthenticatedUser, dto: EnrollStudentDto): Promise<StudentProfile> {
     this.requireAdmin(user);
+
+    // Admins can still pick a specific stream explicitly (schools
+    // with multiple sections per grade, e.g. "4 Blue" vs "4 Red",
+    // reasonably want control over that) -- but when they don't, the
+    // student shouldn't be stuck unenrollable. Auto-resolve to the
+    // least-populated matching stream instead of requiring a manual
+    // pick every time.
+    let classStreamId = dto.classStreamId;
+    if (!classStreamId) {
+      const resolved = await this.repo.findClassStreamForAutoAssign(dto.gradeLevel, dto.academicYear);
+      if (!resolved) {
+        throw new BadRequestException(
+          `No class exists yet for ${dto.gradeLevel} in ${dto.academicYear} — create one first, or specify classStreamId directly.`
+        );
+      }
+      classStreamId = resolved;
+    }
+
     const { userId } = await this.provisioning.provisionShadowMember({
       tenantId: user.tenantId,
       fullName: dto.fullName,
@@ -195,7 +213,7 @@ export class SisService {
     });
     await this.repo.allocateToClass({
       studentId: userId,
-      classStreamId: dto.classStreamId,
+      classStreamId,
       academicYear: dto.academicYear
     });
     if (dto.applicationId) {
