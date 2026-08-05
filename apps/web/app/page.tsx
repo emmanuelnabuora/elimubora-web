@@ -56,8 +56,8 @@ export default function Home() {
                 width: 'min(56%, 640px)',
                 maxHeight: 640,
                 height: 'auto',
-                opacity: 0.92,
-                filter: 'drop-shadow(0 12px 28px rgba(35, 40, 107, 0.18))'
+                opacity: 1,
+                filter: 'drop-shadow(0 12px 24px rgba(35, 40, 107, 0.22))'
               }}
             />
 
