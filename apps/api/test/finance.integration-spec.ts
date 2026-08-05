@@ -149,6 +149,22 @@ d('Finance (integration)', () => {
     expect(res.body).toMatchObject({ amountDue: '15000.00', amountPaid: '0.00', status: 'unpaid' });
   });
 
+  it('a duplicate invoice for the same student/year/term is a clean 409, not a raw 500 — a real bug found live in production', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/invoices')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ studentId, feeStructureId })
+      .expect(409);
+  });
+
+  it('a duplicate fee structure for the same grade/year/term is also a clean 409 — same class of bug, same fix', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/fee-structures')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ gradeLevel: 'G2', academicYear: 2026, term: 1, amount: 99999 })
+      .expect(409);
+  });
+
   it('a partial manual payment moves the invoice to partial with a DERIVED balance', async () => {
     const res = await request(app.getHttpServer())
       .post(`/v1/invoices/${invoiceId}/payments/manual`)

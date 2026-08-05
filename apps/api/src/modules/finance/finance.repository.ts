@@ -7,6 +7,15 @@ import { OutboxService } from '../../core/outbox/outbox.service';
 import { PAYMENT_GATEWAY, type PaymentGateway } from '../../core/payments/payment-gateway.port';
 import type { FeeStructure, Invoice, Payment, PaymentMethod } from './finance.types';
 
+function isUniqueViolation(err: unknown, constraintName: string): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505' &&
+    (err as { constraint?: string }).constraint === constraintName
+  );
+}
+
 const UNIQUE_VIOLATION = '23505';
 
 interface FeeStructureRow {
@@ -90,13 +99,25 @@ export class FinanceRepository {
   }): Promise<FeeStructure> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
-      const { rows } = await client.query<FeeStructureRow>(
-        `INSERT INTO finance.fee_structures
-           (id, tenant_id, grade_level, academic_year, term, amount, description)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [id, input.gradeLevel, input.academicYear, input.term, input.amount, input.description ?? null]
-      );
+      let rows: FeeStructureRow[];
+      try {
+        ({ rows } = await client.query<FeeStructureRow>(
+          `INSERT INTO finance.fee_structures
+             (id, tenant_id, grade_level, academic_year, term, amount, description)
+           VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [id, input.gradeLevel, input.academicYear, input.term, input.amount, input.description ?? null]
+        ));
+      } catch (err) {
+        // Same class of bug as createInvoice below: a fee structure
+        // already exists for this grade/year/term
+        // (fee_structures_tenant_id_grade_level_academic_year_term_key),
+        // and nothing was catching that before this fix.
+        if (isUniqueViolation(err, 'fee_structures_tenant_id_grade_level_academic_year_term_key')) {
+          throw new ConflictException('A fee structure already exists for this grade level, year, and term.');
+        }
+        throw err;
+      }
       await this.audit.record(client, {
         action: 'fee_structure.created',
         entityType: 'fee_structure',
@@ -147,21 +168,35 @@ export class FinanceRepository {
       if (!structure) throw new NotFoundException('Fee structure not found');
 
       const id = randomUUID();
-      const { rows } = await client.query<InvoiceRow>(
-        `INSERT INTO finance.invoices
-           (id, tenant_id, student_id, fee_structure_id, academic_year, term, amount_due, due_date)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [
-          id,
-          input.studentId,
-          input.feeStructureId,
-          structure.academic_year,
-          structure.term,
-          structure.amount,
-          input.dueDate ?? null
-        ]
-      );
+      let rows: InvoiceRow[];
+      try {
+        ({ rows } = await client.query<InvoiceRow>(
+          `INSERT INTO finance.invoices
+             (id, tenant_id, student_id, fee_structure_id, academic_year, term, amount_due, due_date)
+           VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [
+            id,
+            input.studentId,
+            input.feeStructureId,
+            structure.academic_year,
+            structure.term,
+            structure.amount,
+            input.dueDate ?? null
+          ]
+        ));
+      } catch (err) {
+        // A real bug found live in production: this student already
+        // has an invoice for this exact academic year/term, and the
+        // database correctly rejects a second one via
+        // invoices_student_id_academic_year_term_key -- but nothing
+        // here was catching that, so it surfaced as a raw, unhandled
+        // 500 with no useful message instead of a clean 409.
+        if (isUniqueViolation(err, 'invoices_student_id_academic_year_term_key')) {
+          throw new ConflictException('This student already has an invoice for this academic year and term.');
+        }
+        throw err;
+      }
       await this.audit.record(client, {
         action: 'invoice.created',
         entityType: 'invoice',
