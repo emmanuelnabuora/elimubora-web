@@ -20,30 +20,60 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
   const [gradeLevel, setGradeLevel] = useState('');
   const [classStreamId, setClassStreamId] = useState('');
   const [academicYear] = useState(new Date().getFullYear());
+  const [addParent, setAddParent] = useState(false);
+  const [parentFullName, setParentFullName] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentPhysicalAddress, setParentPhysicalAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setWarning(null);
     try {
       const res = await fetch('/api/admin/students', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ fullName, gradeLevel, classStreamId: classStreamId || undefined, academicYear })
+        body: JSON.stringify({
+          fullName,
+          gradeLevel,
+          classStreamId: classStreamId || undefined,
+          academicYear,
+          ...(addParent
+            ? {
+                parentFullName,
+                parentEmail,
+                parentPhysicalAddress: parentPhysicalAddress || undefined
+              }
+            : {})
+        })
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.message ?? 'Could not enrol this student. Try again.');
         return;
       }
-      setSuccess(`Enrolled — admission number ${data.admissionNumber}.`);
+      if (data.parentWarning) {
+        setWarning(data.parentWarning);
+      } else {
+        setSuccess(
+          addParent
+            ? `Enrolled — admission number ${data.admissionNumber}. ${parentFullName} has been invited as their parent.`
+            : `Enrolled — admission number ${data.admissionNumber}.`
+        );
+      }
       setFullName('');
       setGradeLevel('');
       setClassStreamId('');
+      setAddParent(false);
+      setParentFullName('');
+      setParentEmail('');
+      setParentPhysicalAddress('');
       router.refresh();
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -101,7 +131,51 @@ export function AddStudentForm({ classStreams }: { classStreams: ClassStream[] }
           <input value={academicYear} disabled />
         </label>
       </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 'var(--eb-space-3)' }}>
+        <input type="checkbox" checked={addParent} onChange={(e) => setAddParent(e.target.checked)} />
+        Invite a parent for this student
+      </label>
+
+      {addParent && (
+        <div style={{ marginBottom: 'var(--eb-space-3)' }}>
+          <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0, marginBottom: 12 }}>
+            This creates a real guardian record linked to this student, and sends a real invitation to this email
+            so the parent can set up their own login — the same invitation flow used for staff.
+          </p>
+          <div className="admin-form-row">
+            <label className="admin-field">
+              <span>Parent full name</span>
+              <input
+                value={parentFullName}
+                onChange={(e) => setParentFullName(e.target.value)}
+                required={addParent}
+                minLength={2}
+              />
+            </label>
+            <label className="admin-field">
+              <span>Parent email</span>
+              <input
+                type="email"
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+                required={addParent}
+              />
+            </label>
+          </div>
+          <label className="admin-field">
+            <span>Physical address (optional)</span>
+            <input value={parentPhysicalAddress} onChange={(e) => setParentPhysicalAddress(e.target.value)} />
+          </label>
+        </div>
+      )}
+
       {error && <p className="auth-error">{error}</p>}
+      {warning && (
+        <p className="auth-error" style={{ color: '#b45309', background: '#fff7e8' }}>
+          {warning}
+        </p>
+      )}
       {success && (
         <p className="dashboard-subhead" style={{ color: 'var(--eb-primary)' }}>
           {success}

@@ -8,6 +8,7 @@ export interface Guardian {
   phone: string | null;
   email: string | null;
   nationalId: string | null;
+  physicalAddress: string | null;
   userId: string | null;
 }
 

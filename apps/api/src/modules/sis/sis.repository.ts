@@ -48,13 +48,21 @@ export class SisRepository {
     phone?: string;
     email?: string;
     nationalId?: string;
+    physicalAddress?: string;
   }): Promise<Guardian> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
       await client.query(
-        `INSERT INTO sis.guardians (id, tenant_id, full_name, phone, email, national_id)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5)`,
-        [id, input.fullName, input.phone ?? null, input.email ?? null, input.nationalId ?? null]
+        `INSERT INTO sis.guardians (id, tenant_id, full_name, phone, email, national_id, physical_address)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6)`,
+        [
+          id,
+          input.fullName,
+          input.phone ?? null,
+          input.email ?? null,
+          input.nationalId ?? null,
+          input.physicalAddress ?? null
+        ]
       );
       await this.audit.record(client, {
         action: 'guardian.created',
@@ -68,6 +76,7 @@ export class SisRepository {
         phone: input.phone ?? null,
         email: input.email ?? null,
         nationalId: input.nationalId ?? null,
+        physicalAddress: input.physicalAddress ?? null,
         userId: null
       };
     });
@@ -135,9 +144,10 @@ export class SisRepository {
         phone: string | null;
         email: string | null;
         national_id: string | null;
+        physical_address: string | null;
         user_id: string | null;
       }>(
-        `SELECT g.id, g.full_name, g.phone, g.email, g.national_id, g.user_id
+        `SELECT g.id, g.full_name, g.phone, g.email, g.national_id, g.physical_address, g.user_id
            FROM sis.guardians g
            JOIN sis.student_guardians sg ON sg.guardian_id = g.id
           WHERE sg.student_id = $1 AND sg.tenant_id = core.current_tenant_id()
@@ -150,6 +160,7 @@ export class SisRepository {
         phone: r.phone,
         email: r.email,
         nationalId: r.national_id,
+        physicalAddress: r.physical_address,
         userId: r.user_id
       }));
     });

@@ -34,7 +34,8 @@ export const createGuardianSchema = z.object({
   fullName: z.string().min(2).max(200),
   phone: z.string().min(7).max(20).optional(),
   email: z.string().email().optional(),
-  nationalId: z.string().max(30).optional()
+  nationalId: z.string().max(30).optional(),
+  physicalAddress: z.string().max(500).optional()
 });
 export type CreateGuardianDto = z.infer<typeof createGuardianSchema>;
 

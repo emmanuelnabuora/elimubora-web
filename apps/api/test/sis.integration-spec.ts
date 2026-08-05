@@ -176,12 +176,13 @@ d('Student Information System (integration)', () => {
     expect(asAdmin.body).toMatchObject({ bloodGroup: 'O+', allergies: 'Penicillin' });
   });
 
-  it('a guardian can be linked and retrieved', async () => {
+  it('a guardian can be linked and retrieved, including the real physical address field', async () => {
     const guardian = await request(app.getHttpServer())
       .post('/v1/guardians')
       .set('authorization', `Bearer ${adminAToken}`)
-      .send({ fullName: 'Mary Kamau', phone: '+254712345678' })
+      .send({ fullName: 'Mary Kamau', phone: '+254712345678', physicalAddress: '123 Moi Avenue, Nairobi' })
       .expect(201);
+    expect(guardian.body.physicalAddress).toBe('123 Moi Avenue, Nairobi');
 
     const linked = await request(app.getHttpServer())
       .post(`/v1/students/${studentId}/guardians`)
@@ -189,7 +190,7 @@ d('Student Information System (integration)', () => {
       .send({ guardianId: guardian.body.id, relationship: 'mother', isPrimary: true })
       .expect(201);
     expect(linked.body).toEqual([
-      expect.objectContaining({ fullName: 'Mary Kamau', userId: null })
+      expect.objectContaining({ fullName: 'Mary Kamau', userId: null, physicalAddress: '123 Moi Avenue, Nairobi' })
     ]);
   });
 
