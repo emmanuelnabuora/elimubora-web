@@ -25,15 +25,10 @@ const stats = [
  * step. /login and /login/[role] still exist and work exactly as
  * before for anyone linking directly to them.
  *
- * The brief's hero image (a photograph of a teacher and students) is
- * deliberately not included here -- embedding a real photo of people
- * would mean either fabricating one or sourcing an unlicensed stock
- * image directly into the product's codebase, neither of which is
- * appropriate. The Kenya outline is a genuine substitute: an original,
- * simplified SVG approximation of the country's shape (geographic
- * outlines are factual, not copyrighted content), used the same
- * decorative way the brief's map silhouette was -- faded, behind the
- * content, not as a literal photograph replacement.
+ * The hero illustration (public/landing-hero.png) is a real,
+ * user-supplied AI-generated image, not a photograph of real people
+ * and not a third-party stock image -- unlike either of those, using
+ * it directly is genuinely fine.
  */
 export default function Home() {
   return (
@@ -42,16 +37,20 @@ export default function Home() {
       <div className="auth-split">
         <section className="auth-illustration">
           <div className="auth-illustration-content">
-            <svg
-              viewBox="0 0 400 400"
+            <img
+              src="/landing-hero.png"
+              alt=""
               aria-hidden="true"
-              style={{ position: 'absolute', top: '8%', right: '-8%', width: '65%', height: 'auto', opacity: 0.16, color: 'var(--sa-purple, #5B4CF5)' }}
-            >
-              <path
-                fill="currentColor"
-                d="M180 20 L230 15 L245 45 L290 55 L310 90 L295 120 L320 150 L305 190 L330 220 L310 260 L325 300 L290 330 L270 310 L245 340 L215 320 L200 350 L170 330 L160 295 L130 285 L120 250 L95 235 L105 195 L85 165 L110 140 L100 105 L135 85 L140 50 L180 20 Z"
-              />
-            </svg>
+              style={{
+                position: 'absolute',
+                top: '4%',
+                right: '-6%',
+                width: '58%',
+                height: 'auto',
+                opacity: 0.9,
+                filter: 'drop-shadow(0 12px 28px rgba(35, 40, 107, 0.18))'
+              }}
+            />
 
             <Link href="/" className="site-header-brand" style={{ marginBottom: 'var(--eb-space-2)' }}>
               <span className="site-header-mark">
