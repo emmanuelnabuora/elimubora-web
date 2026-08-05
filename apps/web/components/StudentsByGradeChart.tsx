@@ -17,10 +17,10 @@ export function StudentsByGradeChart({ counts }: { counts: Record<string, number
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 20, right: 8, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e8f0" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6E8F2" />
         <XAxis dataKey="grade" tick={{ fontSize: 12, fill: '#687089' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 12, fill: '#687089' }} axisLine={false} tickLine={false} allowDecimals={false} />
-        <Bar dataKey="count" fill="#5546e8" radius={[6, 6, 0, 0]}>
+        <Bar dataKey="count" fill="#5B4CF5" radius={[6, 6, 0, 0]}>
           <LabelList dataKey="count" position="top" style={{ fill: '#12182a', fontSize: 12, fontWeight: 600 }} />
         </Bar>
       </BarChart>

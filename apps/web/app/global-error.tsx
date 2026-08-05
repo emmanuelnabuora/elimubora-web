@@ -16,21 +16,21 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif', background: '#f7f8fc' }}>
+      <body style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif', background: '#F6F7FC' }}>
         <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
           <div
             style={{
               maxWidth: 440,
               width: '100%',
               background: '#ffffff',
-              border: '1px solid #e4e8f0',
+              border: '1px solid #E6E8F2',
               borderRadius: 12,
               padding: 32,
               textAlign: 'center'
             }}
           >
             <h1 style={{ fontSize: 20, margin: '0 0 8px' }}>Something went wrong</h1>
-            <p style={{ fontSize: 14, color: '#657087', margin: '0 0 24px' }}>
+            <p style={{ fontSize: 14, color: '#6B7285', margin: '0 0 24px' }}>
               This has been logged. Please try again shortly.
             </p>
             <button
@@ -39,7 +39,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               style={{
                 padding: '10px 20px',
                 borderRadius: 8,
-                background: '#5634db',
+                background: '#5B4CF5',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
@@ -49,7 +49,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               Try again
             </button>
             {error.digest && (
-              <p style={{ fontSize: 11, color: '#a0a8ba', marginTop: 20 }}>Reference: {error.digest}</p>
+              <p style={{ fontSize: 11, color: '#98A2B3', marginTop: 20 }}>Reference: {error.digest}</p>
             )}
           </div>
         </div>

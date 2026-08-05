@@ -34,8 +34,8 @@ export function ClassPerformanceChart({ points }: { points: GradedPoint[] }) {
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5546e8" stopOpacity={0.28} />
-            <stop offset="100%" stopColor="#5546e8" stopOpacity={0} />
+            <stop offset="0%" stopColor="#5B4CF5" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="#5B4CF5" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--eb-line)" />
@@ -48,7 +48,7 @@ export function ClassPerformanceChart({ points }: { points: GradedPoint[] }) {
           tickFormatter={(v) => `${v}%`}
         />
         <Tooltip formatter={(v) => [`${v}%`, 'Class average']} />
-        <Area type="monotone" dataKey="average" stroke="#5546e8" strokeWidth={2} fill="url(#scoreFill)" />
+        <Area type="monotone" dataKey="average" stroke="#5B4CF5" strokeWidth={2} fill="url(#scoreFill)" />
       </AreaChart>
     </ResponsiveContainer>
   );

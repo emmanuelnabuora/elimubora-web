@@ -8,6 +8,14 @@ body {
   color: var(--eb-fg);
   font-family: var(--eb-font-body);
   -webkit-font-smoothing: antialiased;
+  /* Two real, previously-undefined variables, found while matching
+     the landing/login pages to the dashboard palette: both were
+     referenced (role-door accents, the site logo mark's icon color)
+     but never defined anywhere in this file or the shared tokens.css,
+     leaving their computed value to an unpredictable browser fallback
+     rather than an intentional color. */
+  --eb-ink-900: #12182a;
+  --eb-accent: #5546e8;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -777,10 +785,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 .admin-section {
-  background: var(--eb-bg-panel);
-  border: 1px solid var(--eb-line);
-  border-radius: var(--eb-radius-md);
-  padding: var(--eb-space-6);
+  background: var(--sa-surface, var(--eb-bg-panel));
+  border: 1px solid var(--sa-border, var(--eb-line));
+  border-radius: var(--sa-radius-card, var(--eb-radius-md));
+  box-shadow: 0 1px 2px rgba(31, 36, 55, 0.04), 0 8px 24px rgba(31, 36, 55, 0.04);
+  padding: var(--eb-space-8, 32px);
   margin-bottom: var(--eb-space-6);
 }
 
@@ -845,30 +854,34 @@ a { color: inherit; text-decoration: none; }
 .admin-field select {
   font-family: var(--eb-font-body);
   font-size: 14px;
-  padding: 9px 10px;
-  border-radius: var(--eb-radius-sm);
-  border: 1px solid var(--eb-line);
-  background: var(--eb-bg);
+  padding: 10px 14px;
+  border-radius: var(--sa-radius-input, var(--eb-radius-sm));
+  border: 1px solid var(--sa-border, var(--eb-line));
+  background: var(--sa-surface, var(--eb-bg));
   color: var(--eb-fg);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .admin-field input:focus-visible,
 .admin-field select:focus-visible {
-  outline: 2px solid var(--eb-focus);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--sa-purple, var(--eb-focus));
+  box-shadow: 0 0 0 3px rgba(91, 76, 245, 0.2);
 }
 
 .admin-submit {
   font-family: var(--eb-font-display);
   font-weight: 600;
   font-size: 14px;
-  color: var(--eb-primary-contrast);
-  background: var(--eb-primary);
+  color: #ffffff;
+  background: var(--sa-purple, var(--eb-primary));
   border: none;
-  border-radius: var(--eb-radius-sm);
-  padding: 10px 18px;
+  border-radius: 12px;
+  padding: 11px 20px;
   cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
-.admin-submit:hover:not(:disabled) { filter: brightness(1.08); }
+.admin-submit:hover:not(:disabled) { background: var(--sa-purple-hover, var(--eb-primary)); }
+.admin-submit:active:not(:disabled) { transform: translateY(1px); }
 .admin-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .admin-action-row {
@@ -881,12 +894,14 @@ a { color: inherit; text-decoration: none; }
   font-weight: 600;
   font-size: 13px;
   border: none;
-  border-radius: var(--eb-radius-sm);
+  border-radius: 10px;
   padding: 6px 12px;
   cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
-.admin-btn-approve { background: var(--eb-primary); color: var(--eb-primary-contrast); }
-.admin-btn-deny { background: transparent; border: 1px solid var(--eb-danger); color: var(--eb-danger); }
+.admin-btn-approve { background: var(--sa-purple, var(--eb-primary)); color: #ffffff; }
+.admin-btn-approve:hover:not(:disabled) { background: var(--sa-purple-hover, var(--eb-primary)); }
+.admin-btn-deny { background: transparent; border: 1px solid var(--sa-red, var(--eb-danger)); color: var(--sa-red, var(--eb-danger)); }
 .admin-btn-approve:disabled, .admin-btn-deny:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .admin-empty {
@@ -913,6 +928,7 @@ a { color: inherit; text-decoration: none; }
   --eb-fg-muted: #687089;
   --eb-line: #e4e8f0;
   --eb-primary: #5546e8;
+  --eb-primary-contrast: #ffffff;
   --eb-green-100: #f4f1ff;
 }
 
@@ -928,25 +944,41 @@ a { color: inherit; text-decoration: none; }
 ================================================================= */
 
 .sa-shell {
-  --sa-sidebar-1: #111b5c;
-  --sa-sidebar-2: #172875;
-  --sa-sidebar-active: #5145e5;
-  --sa-purple: #5546e8;
-  --sa-blue: #3478e5;
-  --sa-green: #20a85a;
-  --sa-orange: #f59e0b;
-  --sa-red: #ef3038;
-  --sa-bg: #f7f8fc;
+  /* Indigo/Purple design system, per explicit spec. Sidebar is now a
+     solid background (the spec gives one color, not two to gradient
+     between) -- the gradient it does specify is for the active nav
+     item specifically, kept as its own token below. */
+  --sa-sidebar-1: #23286B;
+  --sa-sidebar-2: #23286B;
+  --sa-sidebar-hover: #2D3486;
+  --sa-sidebar-active: #5B4CF5;
+  --sa-sidebar-active-gradient: linear-gradient(135deg, #5B4CF5 0%, #6C5CFF 100%);
+  --sa-section-label: #9EA4D8;
+  --sa-purple: #5B4CF5;
+  --sa-purple-hover: #4E40E8;
+  --sa-purple-secondary: #6C5CFF;
+  --sa-blue: #3B82F6;
+  --sa-green: #22C55E;
+  --sa-orange: #F59E0B;
+  --sa-red: #EF4444;
+  --sa-bg: #F6F7FC;
   --sa-surface: #ffffff;
-  --sa-border: #e4e8f0;
-  --sa-text: #12182a;
-  --sa-text-muted: #687089;
-  --sa-muted2: #98a0b5;
-  --sa-purple-tint: #f4f1ff;
+  --sa-border: #E6E8F2;
+  --sa-text: #1F2437;
+  --sa-text-muted: #6B7285;
+  --sa-muted2: #98A2B3;
+  --sa-purple-tint: #F5F4FF;
   --sa-green-tint: #effaf4;
   --sa-blue-tint: #eef6ff;
   --sa-orange-tint: #fff7e9;
   --sa-red-tint: #fff1f2;
+  /* Cards and inputs get their own explicit radius scale per spec
+     (24px / 16px) -- deliberately separate from the shared
+     --eb-radius-* tokens (6/10/16px) used elsewhere in the app, since
+     those serve non-dashboard surfaces (the landing/login pages) that
+     weren't part of this spec and shouldn't silently change too. */
+  --sa-radius-card: 24px;
+  --sa-radius-input: 16px;
 
   /* Existing inline styles across Teacher/Student/Parent reference
      these color tokens directly (not just via class names) — spacing
@@ -999,7 +1031,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--sa-section-label);
   padding: 16px 12px 6px;
 }
 
@@ -1013,9 +1045,10 @@ a { color: inherit; text-decoration: none; }
   font-weight: 500;
   color: rgba(255, 255, 255, 0.75);
   margin-bottom: 2px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
-.sa-nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
-.sa-nav-item.active { background: var(--sa-sidebar-active); color: #ffffff; font-weight: 600; }
+.sa-nav-item:hover { background: var(--sa-sidebar-hover); color: #ffffff; }
+.sa-nav-item.active { background: var(--sa-sidebar-active-gradient); color: #ffffff; font-weight: 600; }
 .sa-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 .sa-sidebar-footer { margin-top: auto; padding-top: 16px; }

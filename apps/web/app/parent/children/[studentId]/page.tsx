@@ -168,8 +168,8 @@ export default async function ChildDetailPage({ params }: { params: Promise<{ st
               <div style={{ marginBottom: 'var(--eb-space-4)' }}>
                 <CompositionDonut
                   segments={[
-                    { name: 'Paid', value: totalPaid, color: '#20a85a' },
-                    { name: 'Outstanding', value: totalOutstanding, color: '#ef3038' }
+                    { name: 'Paid', value: totalPaid, color: '#22C55E' },
+                    { name: 'Outstanding', value: totalOutstanding, color: '#EF4444' }
                   ]}
                   centerValue={totalPaid + totalOutstanding}
                   centerLabel="Total fees (KES)"

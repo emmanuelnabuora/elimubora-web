@@ -67,7 +67,7 @@ export function LinkGuardianAccountAction({
       >
         {loading ? '…' : 'Link'}
       </button>
-      {error && <span style={{ fontSize: 11, color: 'var(--eb-danger, #ef3038)' }}>{error}</span>}
+      {error && <span style={{ fontSize: 11, color: 'var(--eb-danger, #EF4444)' }}>{error}</span>}
     </div>
   );
 }

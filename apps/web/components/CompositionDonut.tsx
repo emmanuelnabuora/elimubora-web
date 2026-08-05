@@ -45,16 +45,16 @@ export function CompositionDonut({
             pointerEvents: 'none'
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 700, color: '#12182a' }}>{centerValue}</span>
-          <span style={{ fontSize: 11, color: '#687089', textAlign: 'center' }}>{centerLabel}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: '#1F2437' }}>{centerValue}</span>
+          <span style={{ fontSize: 11, color: '#6B7285', textAlign: 'center' }}>{centerLabel}</span>
         </div>
       </div>
       <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
         {segments.map((s) => (
           <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: s.color, flexShrink: 0 }} />
-            <span style={{ color: '#687089' }}>{s.name}</span>
-            <span style={{ fontWeight: 700, color: '#12182a' }}>
+            <span style={{ color: '#6B7285' }}>{s.name}</span>
+            <span style={{ fontWeight: 700, color: '#1F2437' }}>
               {s.value} ({Math.round((s.value / total) * 100)}%)
             </span>
           </div>

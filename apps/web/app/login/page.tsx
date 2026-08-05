@@ -16,7 +16,7 @@ const primaryRoles = ['teacher', 'student', 'parent'] as const;
 export default function LoginSelectorPage() {
   const admin = ROLE_CONFIG.admin!;
   return (
-    <main className="landing">
+    <main className="landing landing-theme">
       <SiteHeader showHelp={false} />
 
       <div className="landing-hero" style={{ marginBottom: 'var(--eb-space-8)' }}>

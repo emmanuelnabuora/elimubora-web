@@ -47,7 +47,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
                 style={{
                   padding: '10px 20px',
                   borderRadius: 8,
-                  border: '1px solid var(--eb-line, #e4e8f0)',
+                  border: '1px solid var(--eb-line, #E6E8F2)',
                   color: 'inherit',
                   textDecoration: 'none',
                   fontWeight: 600
@@ -57,7 +57,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
               </a>
             </div>
             {error.digest && (
-              <p style={{ fontSize: 11, color: 'var(--eb-fg-muted, #a0a8ba)', marginTop: 20 }}>
+              <p style={{ fontSize: 11, color: 'var(--eb-fg-muted, #98A2B3)', marginTop: 20 }}>
                 Reference: {error.digest}
               </p>
             )}

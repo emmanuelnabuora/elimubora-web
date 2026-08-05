@@ -16,7 +16,7 @@ export default async function LoginPage({ params }: { params: Promise<{ role: st
   const Icon = role.icon;
 
   return (
-    <main className="auth-page">
+    <main className="auth-page landing-theme">
       <SiteHeader showHelp={false} />
       <div className="auth-split">
         <section className="auth-illustration" style={{ ['--door-accent' as string]: role.accent }}>

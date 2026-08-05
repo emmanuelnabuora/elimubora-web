@@ -59,8 +59,8 @@ export default async function AdminOverviewPage() {
     principal: 'Principals'
   };
   const roleColors: Record<string, string> = {
-    teacher: '#5546e8',
-    school_admin: '#3478e5',
+    teacher: '#5B4CF5',
+    school_admin: '#3B82F6',
     principal: '#f59e0b'
   };
   const roleCounts: Record<string, number> = {};

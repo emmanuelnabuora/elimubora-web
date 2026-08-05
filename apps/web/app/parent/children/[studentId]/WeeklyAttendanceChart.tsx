@@ -56,7 +56,7 @@ export function WeeklyAttendanceChart({ records }: { records: AttendanceRecord[]
           tickFormatter={(v) => `${v}%`}
         />
         <Tooltip formatter={(v) => [`${v}%`, 'Attendance']} cursor={{ fill: 'var(--eb-line)' }} />
-        <Bar dataKey="rate" fill="#20a85a" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="rate" fill="#22C55E" radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
