@@ -51,10 +51,10 @@ export default function Home() {
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                top: '2%',
+                top: '9%',
                 right: '-4%',
-                width: 'min(58%, 680px)',
-                maxHeight: 680,
+                width: 'min(56%, 640px)',
+                maxHeight: 640,
                 height: 'auto',
                 opacity: 0.92,
                 filter: 'drop-shadow(0 12px 28px rgba(35, 40, 107, 0.18))'
@@ -78,7 +78,7 @@ export default function Home() {
               &#9733; Kenya&rsquo;s National Digital Education Platform
             </div>
 
-            <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: '72px', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: '72px', letterSpacing: '-0.02em', margin: 0, maxWidth: 460 }}>
               A Smarter Future
               <br />
               Starts with
