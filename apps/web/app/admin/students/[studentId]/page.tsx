@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiFetch } from '../../../../lib/api-client';
 import { AddGuardianForm } from './AddGuardianForm';
 import { ActivateAccountForm } from './ActivateAccountForm';
+import { LinkGuardianAccountAction } from './LinkGuardianAccountAction';
 
 interface StudentListItem {
   studentId: string;
@@ -80,6 +81,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                     <span className={`status-pill ${g.userId ? 'active' : 'inactive'}`}>
                       {g.userId ? 'Linked' : 'Not linked'}
                     </span>
+                    {!g.userId && (
+                      <div style={{ marginTop: 6 }}>
+                        <LinkGuardianAccountAction guardianId={g.id} parentAccounts={parentAccounts} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
