@@ -24,7 +24,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
   const isSessionExpired = error.message === 'Not signed in' || error.message.includes('signed in');
 
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
+    <main className="landing-theme" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--eb-bg)' }}>
       <div className="auth-card" style={{ textAlign: 'center', maxWidth: 440 }}>
         {isSessionExpired ? (
           <>
