@@ -32,6 +32,7 @@ export function AddStudentForm({
   const applicationId = initialValues?.applicationId;
   const [fullName, setFullName] = useState(initialValues?.fullName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState<'' | 'male' | 'female'>('');
   const [address, setAddress] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
@@ -42,6 +43,10 @@ export function AddStudentForm({
   const [parentFullName, setParentFullName] = useState(initialValues?.parentFullName ?? '');
   const [parentEmail, setParentEmail] = useState('');
   const [parentPhysicalAddress, setParentPhysicalAddress] = useState('');
+  const [addSecondParent, setAddSecondParent] = useState(false);
+  const [parent2FullName, setParent2FullName] = useState('');
+  const [parent2Email, setParent2Email] = useState('');
+  const [parent2PhysicalAddress, setParent2PhysicalAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -60,6 +65,7 @@ export function AddStudentForm({
         body: JSON.stringify({
           fullName,
           dateOfBirth: dateOfBirth || undefined,
+          gender: gender || undefined,
           address: address || undefined,
           emergencyContactName: emergencyContactName || undefined,
           emergencyContactPhone: emergencyContactPhone || undefined,
@@ -72,6 +78,13 @@ export function AddStudentForm({
                 parentFullName,
                 parentEmail,
                 parentPhysicalAddress: parentPhysicalAddress || undefined
+              }
+            : {}),
+          ...(addParent && addSecondParent
+            ? {
+                parent2FullName,
+                parent2Email,
+                parent2PhysicalAddress: parent2PhysicalAddress || undefined
               }
             : {})
         })
@@ -95,14 +108,18 @@ export function AddStudentForm({
       if (data.parentWarning) {
         setWarning(data.parentWarning);
       } else {
+        const parentNames = addParent
+          ? [parentFullName, ...(addSecondParent ? [parent2FullName] : [])].join(' and ')
+          : '';
         setSuccess(
           addParent
-            ? `Enrolled — admission number ${data.admissionNumber}. ${parentFullName} has been invited as their parent.`
+            ? `Enrolled — admission number ${data.admissionNumber}. ${parentNames} ${addSecondParent ? 'have' : 'has'} been invited as their parent.`
             : `Enrolled — admission number ${data.admissionNumber}.`
         );
       }
       setFullName('');
       setDateOfBirth('');
+      setGender('');
       setAddress('');
       setEmergencyContactName('');
       setEmergencyContactPhone('');
@@ -112,6 +129,10 @@ export function AddStudentForm({
       setParentFullName('');
       setParentEmail('');
       setParentPhysicalAddress('');
+      setAddSecondParent(false);
+      setParent2FullName('');
+      setParent2Email('');
+      setParent2PhysicalAddress('');
       router.refresh();
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -136,6 +157,16 @@ export function AddStudentForm({
           <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
         </label>
         <label className="admin-field">
+          <span>Gender (optional)</span>
+          <select value={gender} onChange={(e) => setGender(e.target.value as typeof gender)}>
+            <option value="">Not specified</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </label>
+      </div>
+      <div className="admin-form-row">
+        <label className="admin-field">
           <span>Grade level</span>
           <select
             value={gradeLevel}
@@ -155,8 +186,6 @@ export function AddStudentForm({
             ))}
           </select>
         </label>
-      </div>
-      <div className="admin-form-row">
         <label className="admin-field">
           <span>Class stream (optional)</span>
           <select value={classStreamId} onChange={(e) => setClassStreamId(e.target.value)} disabled={!gradeLevel}>
@@ -225,6 +254,40 @@ export function AddStudentForm({
             <span>Physical address (optional)</span>
             <input value={parentPhysicalAddress} onChange={(e) => setParentPhysicalAddress(e.target.value)} />
           </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, margin: '12px 0' }}>
+            <input type="checkbox" checked={addSecondParent} onChange={(e) => setAddSecondParent(e.target.checked)} />
+            Add a second parent or guardian
+          </label>
+
+          {addSecondParent && (
+            <div>
+              <div className="admin-form-row">
+                <label className="admin-field">
+                  <span>Second parent full name</span>
+                  <input
+                    value={parent2FullName}
+                    onChange={(e) => setParent2FullName(e.target.value)}
+                    required={addSecondParent}
+                    minLength={2}
+                  />
+                </label>
+                <label className="admin-field">
+                  <span>Second parent email</span>
+                  <input
+                    type="email"
+                    value={parent2Email}
+                    onChange={(e) => setParent2Email(e.target.value)}
+                    required={addSecondParent}
+                  />
+                </label>
+              </div>
+              <label className="admin-field">
+                <span>Physical address (optional)</span>
+                <input value={parent2PhysicalAddress} onChange={(e) => setParent2PhysicalAddress(e.target.value)} />
+              </label>
+            </div>
+          )}
         </div>
       )}
 

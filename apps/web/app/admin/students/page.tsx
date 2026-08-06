@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { AddStudentForm } from './AddStudentForm';
 import { CreateClassStreamForm } from '../../../components/CreateClassStreamForm';
+import { CsvImportForm } from '../../../components/CsvImportForm';
 
 interface StudentListItem {
   studentId: string;
@@ -25,6 +26,7 @@ export default async function StudentsPage({
   searchParams: Promise<{ applicationId?: string; fullName?: string; gradeLevel?: string; parentFullName?: string }>;
 }) {
   const params = await searchParams;
+  const academicYear = new Date().getFullYear();
   const [students, classStreams] = await Promise.all([
     apiFetch<StudentListItem[]>('/v1/students'),
     apiFetch<ClassStream[]>('/v1/class-streams')
@@ -42,6 +44,14 @@ export default async function StudentsPage({
           </p>
         )}
         <CreateClassStreamForm />
+        <div style={{ marginTop: 'var(--eb-space-4)', paddingTop: 'var(--eb-space-4)', borderTop: '1px solid var(--eb-line)' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px' }}>Or import classes from CSV</h3>
+          <CsvImportForm
+            endpoint="/api/admin/class-streams/import"
+            columns={['name', 'gradeLevel', 'academicYear']}
+            sampleRow={['G4 East', 'G4', String(new Date().getFullYear())]}
+          />
+        </div>
       </div>
 
       <div className="admin-section">
@@ -63,6 +73,20 @@ export default async function StudentsPage({
             parentFullName: params.parentFullName
           }}
         />
+        {!params.applicationId && (
+          <div style={{ marginTop: 'var(--eb-space-4)', paddingTop: 'var(--eb-space-4)', borderTop: '1px solid var(--eb-line)' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px' }}>Or import a class roster from CSV</h3>
+            <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0, marginBottom: 10 }}>
+              Each student is auto-assigned to the least-populated matching class, same as the form above when no
+              specific class is chosen. Enrols for the current academic year ({academicYear}).
+            </p>
+            <CsvImportForm
+              endpoint="/api/admin/students/import"
+              columns={['fullName', 'gradeLevel', 'dateOfBirth', 'gender']}
+              sampleRow={['Jane Wanjiku', 'G4', '2016-03-14', 'female']}
+            />
+          </div>
+        )}
       </div>
 
       <div className="admin-section">

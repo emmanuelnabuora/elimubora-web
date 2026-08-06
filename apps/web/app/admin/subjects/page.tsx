@@ -1,5 +1,7 @@
 import { apiFetch } from '../../../lib/api-client';
 import { CreateCourseForm } from '../../../components/CreateCourseForm';
+import { CsvImportForm } from '../../../components/CsvImportForm';
+import { AddCommonSubjectsForm } from '../../../components/AddCommonSubjectsForm';
 
 interface Course {
   id: string;
@@ -9,8 +11,16 @@ interface Course {
   status: string;
 }
 
+interface ClassStream {
+  gradeLevel: string;
+}
+
 export default async function SubjectsPage() {
-  const courses = await apiFetch<Course[]>('/v1/courses');
+  const [courses, classStreams] = await Promise.all([
+    apiFetch<Course[]>('/v1/courses'),
+    apiFetch<ClassStream[]>('/v1/class-streams')
+  ]);
+  const gradeLevelsWithClasses = [...new Set(classStreams.map((c) => c.gradeLevel))].sort();
 
   const bySubject = new Map<string, Course[]>();
   for (const c of courses) {
@@ -27,6 +37,18 @@ export default async function SubjectsPage() {
       <div className="admin-section">
         <h2 className="admin-section-title">Create a course</h2>
         <CreateCourseForm />
+        <div style={{ marginTop: 12 }}>
+          <AddCommonSubjectsForm gradeLevelsWithClasses={gradeLevelsWithClasses} />
+        </div>
+      </div>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Import courses from CSV</h2>
+        <CsvImportForm
+          endpoint="/api/admin/courses/import"
+          columns={['title', 'learningArea', 'gradeLevel', 'description']}
+          sampleRow={['Mathematics', 'Mathematics', 'G4', 'Core mathematics for Grade 4']}
+        />
       </div>
 
       {subjects.length === 0 ? (
