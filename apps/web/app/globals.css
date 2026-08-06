@@ -357,6 +357,7 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  padding: var(--eb-space-10) var(--eb-space-10) var(--eb-space-6);
 }
 
 .auth-illustration-content {
