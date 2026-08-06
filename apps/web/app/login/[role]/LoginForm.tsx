@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { GoogleLogo, MicrosoftLogo } from '../../../components/icons';
+import { EyeIcon, EyeOffIcon, GoogleLogo, LockIcon, MailIcon, MicrosoftLogo } from '../../../components/icons';
 import { ROLE_CONFIG, type RoleConfig } from '../../../lib/roles';
 
 interface Membership {
@@ -47,6 +47,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [stage, setStage] = useState<Stage>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [socialNote, setSocialNote] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
@@ -230,29 +231,45 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         </div>
       )}
       <label className="auth-field">
-        <span>Email</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoFocus
-          autoComplete="email"
-        />
+        <span>Email or Admission Number</span>
+        <div className="auth-input-wrap">
+          <MailIcon className="auth-input-icon" width={18} height={18} />
+          <input
+            type="text"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email or admission number"
+            required
+            autoFocus
+            autoComplete="email"
+          />
+        </div>
       </label>
       <label className="auth-field">
-        <div className="auth-field-row">
-          <span>Password</span>
-          <a href="/forgot-password">Forgot password?</a>
+        <span>Password</span>
+        <div className="auth-input-wrap">
+          <LockIcon className="auth-input-icon" width={18} height={18} />
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            className="auth-input-toggle"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
+          </button>
         </div>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
       </label>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6 }}>
+        <a href="/forgot-password">Forgot password?</a>
+      </div>
       {error && <p className="auth-error">{error}</p>}
       <button type="submit" className="auth-submit" disabled={loading}>
         {loading ? 'Signing in…' : 'Sign in'}
@@ -264,18 +281,29 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           className="auth-social-button"
           onClick={() => setSocialNote('Google sign-in is not connected yet — use email and password for now.')}
         >
-          <GoogleLogo /> Google
+          <GoogleLogo width={22} height={22} /> Google
         </button>
         <button
           type="button"
           className="auth-social-button"
           onClick={() => setSocialNote('Microsoft sign-in is not connected yet — use email and password for now.')}
         >
-          <MicrosoftLogo /> Microsoft
+          <MicrosoftLogo width={22} height={22} /> Microsoft
         </button>
       </div>
       {socialNote && <p className="auth-social-note">{socialNote}</p>}
-      <p className="auth-footnote">{role.contactNote}</p>
+      <p className="auth-footnote">
+        {(() => {
+          const [question, ...rest] = role.contactNote.split('? ');
+          const action = rest.join('? ');
+          return (
+            <>
+              {question}?{' '}
+              <a href="/help">{action}</a>
+            </>
+          );
+        })()}
+      </p>
     </form>
   );
 }
