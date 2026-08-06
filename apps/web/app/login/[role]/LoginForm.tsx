@@ -267,7 +267,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           </button>
         </div>
       </label>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <a href="/forgot-password">Forgot password?</a>
       </div>
       {error && <p className="auth-error">{error}</p>}
