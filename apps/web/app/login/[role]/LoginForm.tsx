@@ -25,7 +25,6 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [socialNote, setSocialNote] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
@@ -164,14 +163,14 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         </div>
       )}
       <label className="auth-field">
-        <span>Email</span>
+        <span>Email or Admission Number</span>
         <div className="auth-input-wrap">
           <MailIcon className="auth-input-icon" width={18} height={18} />
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email address"
+            placeholder="Enter your email or admission number"
             required
             autoFocus
             autoComplete="email"
@@ -200,16 +199,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           </button>
         </div>
       </label>
-      <div className="auth-field-row" style={{ marginTop: -6 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--eb-fg-muted)', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            style={{ width: 15, height: 15, accentColor: 'var(--eb-primary)' }}
-          />
-          Remember me
-        </label>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6 }}>
         <a href="/forgot-password">Forgot password?</a>
       </div>
       {error && <p className="auth-error">{error}</p>}

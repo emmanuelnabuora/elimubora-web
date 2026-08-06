@@ -32,9 +32,9 @@ export function LandingLoginPanel() {
   return (
     <div className="auth-card" style={{ ['--door-accent' as string]: role.accent }}>
       <div style={{ textAlign: 'center', marginBottom: 'var(--ds-space-lg, 24px)' }}>
-        <h2 style={{ margin: '0 0 4px' }}>Welcome back!</h2>
+        <h2 style={{ margin: '0 0 4px' }}>Sign in to your account</h2>
         <p className="auth-desc" style={{ margin: 0 }}>
-          Sign in to access your ElimuBora portal
+          Access your ElimuBora portal
         </p>
       </div>
 
@@ -44,7 +44,7 @@ export function LandingLoginPanel() {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          gap: 12,
+          gap: 10,
           marginBottom: 'var(--ds-space-lg, 24px)'
         }}
       >
@@ -66,10 +66,8 @@ export function LandingLoginPanel() {
                 gap: 6,
                 flex: '1 1 0',
                 minWidth: 0,
-                aspectRatio: '1 / 1',
-                maxHeight: 96,
                 padding: '12px 6px',
-                borderRadius: 16,
+                borderRadius: 14,
                 border: isActive ? '1.5px solid var(--eb-primary)' : '1px solid var(--eb-line)',
                 background: isActive ? 'var(--eb-green-100)' : 'var(--eb-surface)',
                 color: isActive ? 'var(--eb-primary)' : 'var(--eb-fg-muted)',
@@ -81,7 +79,7 @@ export function LandingLoginPanel() {
                 transition: 'transform 250ms ease, background-color 250ms ease, border-color 250ms ease'
               }}
             >
-              <TabIcon width={24} height={24} />
+              <TabIcon width={22} height={22} />
               {TAB_LABELS[slug]}
             </button>
           );

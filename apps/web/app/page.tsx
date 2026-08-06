@@ -1,42 +1,41 @@
 import Link from 'next/link';
 import { LandingLoginPanel } from '../components/LandingLoginPanel';
 import {
-  BuildingIcon,
-  ChalkboardIcon,
   ChevronDownIcon,
   DeviceIcon,
   GlobeIcon,
   GraduationCapIcon,
   HelpIcon,
-  ParentGroupIcon,
   ShieldIcon,
   UsersIcon
 } from '../components/icons';
 
 const features = [
-  { icon: UsersIcon, title: 'One Unified Platform', desc: 'All education stakeholders, connected in one seamless ecosystem.' },
-  { icon: GraduationCapIcon, title: 'Smart & Data-Driven', desc: 'Real-time insights that drive better teaching and learning outcomes.' },
-  { icon: ShieldIcon, title: 'Secure & Reliable', desc: 'Enterprise-grade security protecting every learner and institution.' },
-  { icon: DeviceIcon, title: 'Accessible Anywhere', desc: 'Learn, teach, and manage from any device, anytime.' }
-];
-
-const stats = [
-  { icon: BuildingIcon, value: '28,000+', label: 'Schools' },
-  { icon: UsersIcon, value: '12M+', label: 'Learners' },
-  { icon: ChalkboardIcon, value: '500K+', label: 'Teachers' },
-  { icon: ParentGroupIcon, value: '10M+', label: 'Parents' }
+  { icon: UsersIcon, tint: '#F5F4FF', color: '#5B4CF5', title: 'One Platform', desc: 'All education stakeholders, connected.' },
+  { icon: GraduationCapIcon, tint: '#E9F9EF', color: '#22C55E', title: 'Smart Learning', desc: 'Data-driven insights for better outcomes.' },
+  { icon: ShieldIcon, tint: '#EAF1FF', color: '#3B82F6', title: 'Secure & Reliable', desc: 'Your data is protected with highest security.' },
+  { icon: DeviceIcon, tint: '#FFF3E0', color: '#F59E0B', title: 'Accessible Anywhere', desc: 'Learn, teach and manage from any device.' }
 ];
 
 /**
- * Landing page, rebuilt to match the ElimuBora Design System v1.0 spec
- * precisely -- exact type scale, spacing, radius, and component
- * dimensions throughout, not just the colors. The login flow itself
- * is unchanged -- LandingLoginPanel reuses the same LoginForm
- * component and submission logic /login/[role] has always used.
+ * Landing page, rebuilt to match a second supplied mockup -- simpler
+ * headline ("Welcome to ElimuBora"), varied per-feature icon colors
+ * instead of uniform purple, no stats bar, and the "Building a
+ * smarter..." line as a dark banner rather than a separate white
+ * card.
  *
- * The hero illustration (public/landing-hero.png) is a real,
- * user-supplied AI-generated image, not a photograph of real people
- * and not a third-party stock image.
+ * The hero illustration is unchanged from before (still
+ * landing-hero.png, the Kenya-shaped one) -- the new mockup's flat-
+ * vector school scene was only supplied as a full-page screenshot,
+ * not as an isolated asset, so there's nothing to swap in yet.
+ *
+ * "Email or Admission Number": the label and placeholder now say
+ * this (matching the mockup), and the input type was changed from
+ * email to text so the browser's built-in validation doesn't reject
+ * an admission number as an invalid email address. The backend
+ * itself still only authenticates by email -- admission-number login
+ * is a real, separate feature that doesn't exist yet, not something
+ * this label change implements.
  */
 export default function Home() {
   return (
@@ -61,122 +60,82 @@ export default function Home() {
               }}
             />
 
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                alignSelf: 'flex-start',
-                background: 'var(--eb-bg-panel)',
-                color: 'var(--eb-primary)',
-                fontSize: 13,
-                fontWeight: 600,
-                padding: '8px 14px',
-                borderRadius: 999
-              }}
-            >
-              &#9733; Kenya&rsquo;s National Digital Education Platform
-            </div>
-
-            <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: '72px', letterSpacing: '-0.02em', margin: 0, maxWidth: 460 }}>
-              A Smarter Future
-              <br />
-              Starts with
+            <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: '64px', letterSpacing: '-0.02em', margin: 0, maxWidth: 460 }}>
+              Welcome to
               <br />
               <span style={{ color: 'var(--eb-primary)' }}>ElimuBora</span>
             </h1>
-            <p style={{ fontSize: 18, lineHeight: '28px', color: 'var(--eb-fg-muted)', margin: 0, maxWidth: 440 }}>
-              Connecting schools, learners, teachers and families on one secure platform to improve learning outcomes
-              across Kenya.
+            <p style={{ fontSize: 18, lineHeight: '28px', color: 'var(--eb-fg-muted)', margin: 0, maxWidth: 420 }}>
+              Kenya&rsquo;s unified digital education platform connecting schools, learners, teachers and parents
+              for a better future.
             </p>
 
-            <ul className="auth-feature-list" style={{ marginTop: 'var(--ds-space-md, 16px)', gap: 12 }}>
+            <ul className="auth-feature-list" style={{ marginTop: 'var(--ds-space-md, 16px)', gap: 14 }}>
               {features.map((f) => (
-                <li
-                  key={f.title}
-                  style={{
-                    alignItems: 'center',
-                    gap: 16,
-                    width: 340,
-                    minHeight: 96,
-                    borderRadius: 20,
-                    padding: 20,
-                    background: 'var(--eb-surface)',
-                    boxShadow: 'var(--ds-shadow-card, 0 12px 30px rgba(31,41,55,.08))'
-                  }}
-                >
+                <li key={f.title} style={{ alignItems: 'center', gap: 14 }}>
                   <span
-                    className="auth-illustration-badge"
-                    style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0 }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      flexShrink: 0,
+                      display: 'grid',
+                      placeItems: 'center',
+                      background: f.tint,
+                      color: f.color
+                    }}
                   >
-                    <f.icon width={24} height={24} />
+                    <f.icon width={20} height={20} />
                   </span>
                   <span>
-                    <strong style={{ display: 'block', fontSize: 16, color: 'var(--eb-fg)' }}>{f.title}</strong>
-                    <span style={{ color: 'var(--eb-fg-muted)', fontSize: 14 }}>{f.desc}</span>
+                    <strong style={{ display: 'block', fontSize: 15, color: 'var(--eb-fg)' }}>{f.title}</strong>
+                    <span style={{ color: 'var(--eb-fg-muted)', fontSize: 13 }}>{f.desc}</span>
                   </span>
                 </li>
               ))}
             </ul>
-
-            <div
-              style={{
-                marginTop: 'var(--ds-space-sm, 8px)',
-                background: 'var(--eb-lavender-bg, #FAF9FF)',
-                border: '1px solid var(--eb-line)',
-                borderRadius: 20,
-                padding: 'var(--ds-space-md, 16px)',
-                display: 'flex',
-                gap: 12,
-                alignItems: 'flex-start',
-                maxWidth: 340
-              }}
-            >
-              <span className="auth-illustration-badge" style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0 }}>
-                <BuildingIcon width={20} height={20} />
-              </span>
-              <span>
-                <strong style={{ display: 'block', color: 'var(--eb-fg)', fontSize: 14 }}>
-                  Building a smarter, stronger education system for Kenya.
-                </strong>
-                <Link href="/help" style={{ fontSize: 13, color: 'var(--eb-primary)', fontWeight: 600, textDecoration: 'none' }}>
-                  Learn more about ElimuBora &rarr;
-                </Link>
-              </span>
-            </div>
           </div>
 
-          <div className="auth-stats-bar">
-            {stats.map((s) => (
-              <div key={s.label} className="auth-stat">
-                <s.icon width={32} height={32} />
-                <span>
-                  <strong>{s.value}</strong>
-                  <span>{s.label}</span>
-                </span>
-              </div>
-            ))}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: 'var(--sa-sidebar-1, #23286B)',
+              color: '#ffffff',
+              padding: '20px 60px',
+              position: 'relative',
+              zIndex: 1
+            }}
+          >
+            <ShieldIcon width={18} height={18} />
+            <span style={{ fontSize: 15, fontWeight: 600 }}>
+              Building a smarter, stronger education system for Kenya.
+            </span>
           </div>
         </section>
 
         <section className="auth-form-side" style={{ flexDirection: 'column', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 32, right: 60, display: 'flex', gap: 12 }}>
-            <Link href="/language" className="pill-button">
+          <div style={{ position: 'absolute', top: 32, right: 60, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link
+              href="/language"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--eb-fg-muted)', textDecoration: 'none' }}
+            >
               <GlobeIcon width={16} height={16} />
               English
               <ChevronDownIcon width={14} height={14} />
             </Link>
-            <Link href="/help" className="pill-button">
+            <span style={{ width: 1, height: 18, background: 'var(--eb-line)' }} />
+            <Link
+              href="/help"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--eb-fg-muted)', textDecoration: 'none' }}
+            >
               <HelpIcon width={16} height={16} />
               Help
             </Link>
           </div>
           <LandingLoginPanel />
-          <p style={{ fontSize: 14, color: 'var(--eb-fg-muted)', marginTop: 'var(--ds-space-lg, 24px)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <ShieldIcon width={14} height={14} />
-            Secure &bull; Reliable &bull; Built for Kenya
-          </p>
-          <p style={{ fontSize: 14, color: 'var(--eb-fg-muted)', marginTop: 'var(--ds-space-sm, 8px)' }}>
+          <p style={{ fontSize: 14, color: 'var(--eb-fg-muted)', marginTop: 'var(--ds-space-lg, 24px)' }}>
             &copy; 2026 ElimuBora Education Management System. All rights reserved.
           </p>
         </section>
