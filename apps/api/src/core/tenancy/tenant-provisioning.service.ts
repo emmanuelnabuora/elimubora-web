@@ -73,9 +73,20 @@ export class TenantProvisioningService {
 
     try {
       await this.db.withContext({ tenantId, actorId: actor.userId }, async (client) => {
+        const settings = {
+          location: {
+            subCounty: dto.subCounty ?? null,
+            ward: dto.ward ?? null,
+            physicalAddress: dto.physicalAddress ?? null
+          },
+          facilities: dto.facilities ?? [],
+          technology: dto.technology ?? null,
+          finance: dto.finance ?? null,
+          branding: dto.branding ?? null
+        };
         await client.query(
-          `INSERT INTO core.tenants (id, slug, name, kind, county_code) VALUES ($1, $2, $3, $4, $5)`,
-          [tenantId, dto.slug, dto.name, dto.kind, dto.countyCode ?? null]
+          `INSERT INTO core.tenants (id, slug, name, kind, county_code, settings) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [tenantId, dto.slug, dto.name, dto.kind, dto.countyCode ?? null, JSON.stringify(settings)]
         );
         await client.query(
           `INSERT INTO core.users (id, email, full_name, password_hash) VALUES ($1, $2, $3, $4)`,
@@ -86,11 +97,32 @@ export class TenantProvisioningService {
            VALUES ($1, core.current_tenant_id(), $2, 'active')`,
           [adminUserId, adminRole]
         );
+
+        // The one genuinely functional addition here: a real class
+        // stream for every grade x stream combination, so a newly
+        // onboarded school doesn't hit the "no class exists yet"
+        // dead end that blocked enrollment repeatedly before class
+        // creation had a UI at all. Both fields are optional — a
+        // school can still onboard with zero classes, same as before.
+        let classesCreated = 0;
+        if (dto.gradeLevels?.length && dto.streams?.length && dto.academicYear) {
+          for (const grade of dto.gradeLevels) {
+            for (const stream of dto.streams) {
+              await client.query(
+                `INSERT INTO sis.class_streams (id, tenant_id, name, grade_level, academic_year)
+                 VALUES ($1, core.current_tenant_id(), $2, $3, $4)`,
+                [randomUUID(), `${grade} ${stream}`, grade, dto.academicYear]
+              );
+              classesCreated += 1;
+            }
+          }
+        }
+
         await this.audit.record(client, {
           action: 'tenant.onboarded',
           entityType: 'tenant',
           entityId: tenantId,
-          after: { name: dto.name, slug: dto.slug, kind: dto.kind, adminEmail: dto.adminEmail }
+          after: { name: dto.name, slug: dto.slug, kind: dto.kind, adminEmail: dto.adminEmail, classesCreated }
         });
       });
     } catch (err) {
@@ -99,6 +131,11 @@ export class TenantProvisioningService {
       }
       if (isUniqueViolation(err, 'users_email_key')) {
         throw new ConflictException('An account with this email already exists.');
+      }
+      if (isUniqueViolation(err, 'class_streams_tenant_id_name_academic_year_key')) {
+        throw new ConflictException(
+          'One of the grade/stream combinations produces a duplicate class name for this academic year.'
+        );
       }
       throw err;
     }

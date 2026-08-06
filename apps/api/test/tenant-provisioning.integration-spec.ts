@@ -160,6 +160,92 @@ d('Tenant provisioning (integration)', () => {
     expect(tenantRow.rows[0].county_code).toBe('047');
   });
 
+  it('onboarding with gradeLevels + streams + academicYear creates a real class stream for every combination', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Bulk Class Academy',
+        slug: `bulk-class-${stamp}`,
+        adminEmail: `bulk-class-admin-${stamp}@newschool.ke`,
+        adminFullName: 'Bulk Class Admin',
+        adminPassword: password,
+        academicYear: 2026,
+        gradeLevels: ['G1', 'G2'],
+        streams: ['A', 'B']
+      })
+      .expect(201);
+
+    // Read via the app role with a bound context — FORCE RLS blocks
+    // even the table-owner connection without app.tenant_id set,
+    // same pattern as every other test file reading sis.* tables
+    // directly.
+    const appRead = new Client({ connectionString: appUrl });
+    await appRead.connect();
+    await appRead.query("SELECT set_config('app.tenant_id', $1, false)", [res.body.tenantId]);
+    const classes = await appRead.query(
+      `SELECT name, grade_level, academic_year FROM sis.class_streams WHERE tenant_id = $1 ORDER BY name`,
+      [res.body.tenantId]
+    );
+    await appRead.end();
+
+    // 2 grades x 2 streams = 4 real classes, not just accepted and
+    // ignored — this is the actual feature, not just schema
+    // acceptance.
+    expect(classes.rows).toHaveLength(4);
+    expect(classes.rows.map((r: { name: string }) => r.name)).toEqual(['G1 A', 'G1 B', 'G2 A', 'G2 B']);
+    expect(classes.rows.every((r: { academic_year: number }) => r.academic_year === 2026)).toBe(true);
+  });
+
+  it('onboarding without gradeLevels/streams still works — both are optional, a school can add classes later instead', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'No Classes Yet Academy',
+        slug: `no-classes-yet-${stamp}`,
+        adminEmail: `no-classes-admin-${stamp}@newschool.ke`,
+        adminFullName: 'No Classes Admin',
+        adminPassword: password
+      })
+      .expect(201);
+    const appRead = new Client({ connectionString: appUrl });
+    await appRead.connect();
+    await appRead.query("SELECT set_config('app.tenant_id', $1, false)", [res.body.tenantId]);
+    const classes = await appRead.query(`SELECT id FROM sis.class_streams WHERE tenant_id = $1`, [res.body.tenantId]);
+    await appRead.end();
+    expect(classes.rows).toHaveLength(0);
+  });
+
+  it('facilities/technology/finance/branding are stored in tenants.settings — real record-keeping, not silently dropped', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Full Profile Academy',
+        slug: `full-profile-${stamp}`,
+        adminEmail: `full-profile-admin-${stamp}@newschool.ke`,
+        adminFullName: 'Full Profile Admin',
+        adminPassword: password,
+        subCounty: 'Westlands',
+        ward: 'Parklands',
+        physicalAddress: '123 Waiyaki Way',
+        facilities: ['Library', 'Computer Laboratory'],
+        technology: { connectivityType: 'Fibre', hasElectricity: true, wifiCoverage: 'Full' },
+        finance: { currency: 'KES', paymentMethods: ['M-Pesa'], mpesaNumber: '0700000000' },
+        branding: { primaryColor: '#5B4CF5', secondaryColor: '#23286B' }
+      })
+      .expect(201);
+
+    const tenantRow = await admin.query(`SELECT settings FROM core.tenants WHERE id = $1`, [res.body.tenantId]);
+    const settings = tenantRow.rows[0].settings;
+    expect(settings.location).toEqual({ subCounty: 'Westlands', ward: 'Parklands', physicalAddress: '123 Waiyaki Way' });
+    expect(settings.facilities).toEqual(['Library', 'Computer Laboratory']);
+    expect(settings.technology.connectivityType).toBe('Fibre');
+    expect(settings.finance.mpesaNumber).toBe('0700000000');
+    expect(settings.branding.primaryColor).toBe('#5B4CF5');
+  });
+
   it('a duplicate slug is a clean 409, not a raw 500', async () => {
     await request(app.getHttpServer())
       .post('/v1/tenants')
