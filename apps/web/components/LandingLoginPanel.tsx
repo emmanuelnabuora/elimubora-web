@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { LoginForm } from '../app/login/[role]/LoginForm';
 import { ROLE_CONFIG } from '../lib/roles';
 
-const TAB_ROLES = ['student', 'teacher', 'parent', 'admin'] as const;
+const TAB_ROLES = ['student', 'teacher', 'parent', 'admin', 'ministry'] as const;
 const TAB_LABELS: Record<(typeof TAB_ROLES)[number], string> = {
   student: 'Student',
   teacher: 'Teacher',
   parent: 'Parent',
-  admin: 'Administrator'
+  admin: 'Administrator',
+  ministry: 'Ministry'
 };
 
 /**
@@ -63,21 +64,24 @@ export function LandingLoginPanel() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                width: 96,
-                height: 96,
-                flexShrink: 0,
-                padding: 16,
+                flex: '1 1 0',
+                minWidth: 0,
+                aspectRatio: '1 / 1',
+                maxHeight: 96,
+                padding: '12px 6px',
                 borderRadius: 16,
                 border: isActive ? '1.5px solid var(--eb-primary)' : '1px solid var(--eb-line)',
                 background: isActive ? 'var(--eb-green-100)' : 'var(--eb-surface)',
                 color: isActive ? 'var(--eb-primary)' : 'var(--eb-fg-muted)',
                 cursor: 'pointer',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
+                textAlign: 'center',
+                lineHeight: 1.2,
                 transition: 'transform 250ms ease, background-color 250ms ease, border-color 250ms ease'
               }}
             >
-              <TabIcon width={28} height={28} />
+              <TabIcon width={24} height={24} />
               {TAB_LABELS[slug]}
             </button>
           );
