@@ -26,7 +26,11 @@ export class WorkerDatabaseService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
     this.pool = new Pool({
       connectionString: config.workerDatabaseUrl,
-      max: 5,
+      // Same reasoning as DatabaseService's own pool: this runs in
+      // the same process, and the real ceiling is Postgres's total
+      // max_connections shared across every scaled-up instance, not
+      // what looks reasonable for one instance alone.
+      max: 2,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000
     });

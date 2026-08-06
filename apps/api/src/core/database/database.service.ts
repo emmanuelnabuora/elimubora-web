@@ -27,7 +27,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
     this.pool = new Pool({
       connectionString: config.databaseUrl,
-      max: 20,
+      // Deliberately small. This pool runs alongside two others in
+      // the same process (WorkerDatabaseService max:5, OutboxRelay's
+      // own pool max:2), and Cloud Run can scale this service to many
+      // instances — the real ceiling that matters is Postgres's own
+      // max_connections (50 on the current Cloud SQL tier), not what
+      // feels generous for a single instance in isolation. Even 4 per
+      // instance needs Cloud Run's own max-instances kept low
+      // alongside this (see the deploy command) to stay under that
+      // ceiling with headroom for admin/migration connections.
+      max: 4,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000
     });

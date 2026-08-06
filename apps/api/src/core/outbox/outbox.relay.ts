@@ -47,7 +47,13 @@ export class OutboxRelay implements OnModuleInit, OnModuleDestroy {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(EVENT_PUBLISHER) private readonly publisher: EventPublisher
   ) {
-    this.pool = new Pool({ connectionString: config.workerDatabaseUrl, max: 2 });
+    // max:1 deliberately -- this is a periodic timer tick, not
+    // concurrent request handling, so it never needs more than one
+    // connection at a time. This runs in the same process as
+    // DatabaseService (max:4) and WorkerDatabaseService (max:2); the
+    // real ceiling is Postgres's total max_connections shared across
+    // every scaled-up instance.
+    this.pool = new Pool({ connectionString: config.workerDatabaseUrl, max: 1 });
   }
 
   onModuleInit(): void {
