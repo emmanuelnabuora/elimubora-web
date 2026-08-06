@@ -3,6 +3,7 @@ import { apiFetch } from '../../../../lib/api-client';
 import { AddGuardianForm } from './AddGuardianForm';
 import { ActivateAccountForm } from './ActivateAccountForm';
 import { LinkGuardianAccountAction } from './LinkGuardianAccountAction';
+import { ImageUploadField } from '../../../../components/ImageUploadField';
 
 interface StudentListItem {
   studentId: string;
@@ -19,6 +20,7 @@ interface StudentProfile {
   address: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
+  photoDataUrl: string | null;
 }
 
 interface Guardian {
@@ -60,6 +62,18 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           Admission #{student.admissionNumber} &middot; {student.className ?? 'No class assigned'}
         </p>
       )}
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Photo</h2>
+        <ImageUploadField
+          endpoint={`/api/admin/students/${studentId}/photo`}
+          fieldName="photoDataUrl"
+          currentImageUrl={profile.photoDataUrl}
+          label="photo"
+          shape="circle"
+          maxDimension={512}
+        />
+      </div>
 
       <div className="admin-section">
         <h2 className="admin-section-title">Details</h2>

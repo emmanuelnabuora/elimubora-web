@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { imageDataUrlSchema } from '../../core/http/image-data-url.schema';
 
 const gradeLevelSchema = z.enum([
   'PP1', 'PP2', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'
@@ -61,6 +62,12 @@ export const updateMedicalSchema = z.object({
   medicalNotes: z.string().max(5000).optional()
 });
 export type UpdateMedicalDto = z.infer<typeof updateMedicalSchema>;
+
+export const updatePhotoSchema = z.object({
+  photoDataUrl: imageDataUrlSchema
+});
+export type UpdatePhotoDto = z.infer<typeof updatePhotoSchema>;
+
 
 export const createClassStreamSchema = z.object({
   name: z.string().min(2).max(100),

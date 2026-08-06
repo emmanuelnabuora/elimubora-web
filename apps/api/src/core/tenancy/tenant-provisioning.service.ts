@@ -4,7 +4,7 @@ import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PasswordService } from '../auth/password.service';
 import { DatabaseService } from '../database/database.service';
-import type { CreateTenantDto } from './tenant-provisioning.dto';
+import type { CreateTenantDto, UpdateTenantLogoDto } from './tenant-provisioning.dto';
 
 function isUniqueViolation(err: unknown, constraintName: string): boolean {
   return (
@@ -154,5 +154,45 @@ export class TenantProvisioningService {
     }
 
     return { tenantId, adminUserId, adminRole };
+  }
+
+  /**
+   * Returns the caller's own active tenant -- name and logo, for
+   * display in the sidebar/header and the school settings page.
+   * Deliberately open to any authenticated staff role (not just
+   * admins) at the controller level, since every role in the app
+   * needs to see the school's own logo, even though only admins can
+   * change it.
+   */
+  async getCurrentTenant(
+    user: AuthenticatedUser
+  ): Promise<{ id: string; name: string; slug: string; logoDataUrl: string | null }> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ id: string; name: string; slug: string; logo_data_url: string | null }>(
+        `SELECT id, name, slug, logo_data_url FROM core.tenants WHERE id = core.current_tenant_id()`
+      );
+      const r = rows[0]!;
+      return { id: r.id, name: r.name, slug: r.slug, logoDataUrl: r.logo_data_url };
+    });
+  }
+
+  /**
+   * Updates the caller's own active tenant's logo. Restricted to
+   * admin roles at the controller level -- unlike getCurrentTenant,
+   * this one actually changes something.
+   */
+  async updateTenantLogo(user: AuthenticatedUser, dto: UpdateTenantLogoDto): Promise<{ logoDataUrl: string }> {
+    return this.db.withTenantTransaction(async (client) => {
+      await client.query(`UPDATE core.tenants SET logo_data_url = $1 WHERE id = core.current_tenant_id()`, [
+        dto.logoDataUrl
+      ]);
+      await this.audit.record(client, {
+        action: 'tenant.logo_updated',
+        entityType: 'tenant',
+        entityId: user.tenantId,
+        after: { updatedBy: user.userId }
+      });
+      return { logoDataUrl: dto.logoDataUrl };
+    });
   }
 }

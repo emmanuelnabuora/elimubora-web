@@ -14,6 +14,7 @@ export function SaShell({
   schoolName,
   fullName,
   roleLabel,
+  logoDataUrl,
   children
 }: {
   sections: SaNavSection[];
@@ -21,8 +22,21 @@ export function SaShell({
   schoolName: string;
   fullName: string;
   roleLabel: string;
+  logoDataUrl?: string | null;
   children: React.ReactNode;
 }) {
+  const SchoolMark = ({ size }: { size: number }) =>
+    logoDataUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoDataUrl}
+        alt=""
+        style={{ width: size, height: size, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+      />
+    ) : (
+      <Building2 size={size} />
+    );
+
   return (
     <div className="sa-shell">
       <aside className="sa-sidebar">
@@ -38,7 +52,7 @@ export function SaShell({
 
         <div className="sa-sidebar-footer">
           <div className="sa-institution-card">
-            <Building2 size={18} />
+            <SchoolMark size={18} />
             {schoolName}
           </div>
           <SaLogoutButton />
@@ -48,7 +62,7 @@ export function SaShell({
       <div className="sa-main">
         <header className="sa-header">
           <div className="sa-header-identity">
-            <Building2 size={20} />
+            <SchoolMark size={20} />
             <div>
               <p className="sa-header-school">{schoolName}</p>
               <p className="sa-header-role" style={{ textTransform: 'capitalize' }}>

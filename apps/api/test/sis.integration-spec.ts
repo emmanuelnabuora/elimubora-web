@@ -751,4 +751,29 @@ d('Student Information System (integration)', () => {
       .expect(400);
     expect(res.body.message).toContain('No class exists yet for G12 in 2026');
   });
+
+  it('PATCH /students/:id/photo updates the photo, and the student profile reflects it back', async () => {
+    const tinyPngDataUrl =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/photo`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ photoDataUrl: tinyPngDataUrl })
+      .expect(200);
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/students/${studentId}`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    expect(res.body.photoDataUrl).toBe(tinyPngDataUrl);
+  });
+
+  it('PATCH /students/:id/photo rejects a non-image data URL with a clean 400', async () => {
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/photo`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ photoDataUrl: 'not-an-image' })
+      .expect(400);
+  });
 });

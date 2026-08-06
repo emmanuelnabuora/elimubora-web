@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { imageDataUrlSchema } from '../http/image-data-url.schema';
 
 const GRADE_LEVELS = [
   'PP1', 'PP2', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'
@@ -107,3 +108,8 @@ export const createTenantSchema = z.object({
     .optional()
 });
 export type CreateTenantDto = z.infer<typeof createTenantSchema>;
+
+export const updateTenantLogoSchema = z.object({
+  logoDataUrl: imageDataUrlSchema
+});
+export type UpdateTenantLogoDto = z.infer<typeof updateTenantLogoSchema>;

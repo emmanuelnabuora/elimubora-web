@@ -1,8 +1,13 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
-import { createTenantSchema, type CreateTenantDto } from './tenant-provisioning.dto';
+import {
+  createTenantSchema,
+  updateTenantLogoSchema,
+  type CreateTenantDto,
+  type UpdateTenantLogoDto
+} from './tenant-provisioning.dto';
 import { TenantProvisioningService } from './tenant-provisioning.service';
 
 @Controller('tenants')
@@ -16,5 +21,20 @@ export class TenantProvisioningController {
     @Body(new ZodValidationPipe(createTenantSchema)) dto: CreateTenantDto
   ) {
     return this.service.createSchoolTenant(user, dto);
+  }
+
+  @Get('current')
+  @Roles('learner', 'teacher', 'parent', 'school_admin', 'principal', 'county_officer', 'ministry_official', 'platform_admin')
+  getCurrent(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getCurrentTenant(user);
+  }
+
+  @Patch('logo')
+  @Roles('school_admin', 'principal', 'platform_admin')
+  updateLogo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(updateTenantLogoSchema)) dto: UpdateTenantLogoDto
+  ) {
+    return this.service.updateTenantLogo(user, dto);
   }
 }

@@ -364,4 +364,91 @@ d('Tenant provisioning (integration)', () => {
       .expect(201);
     expect(ministryRes.body.adminRole).toBe('ministry_official');
   });
+
+  it('GET /tenants/current returns the caller\'s own tenant with a null logo by default', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v1/tenants/current')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .expect(200);
+    expect(res.body.logoDataUrl).toBeNull();
+    expect(res.body.name).toBeTruthy();
+  });
+
+  it('PATCH /tenants/logo updates the logo, and GET /tenants/current reflects it back', async () => {
+    // A tiny (deliberately minimal) valid PNG data URL, not a
+    // realistic logo -- what matters for this test is that a
+    // well-formed image data URL round-trips correctly, not the
+    // actual pixel content.
+    const tinyPngDataUrl =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+    await request(app.getHttpServer())
+      .patch('/v1/tenants/logo')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({ logoDataUrl: tinyPngDataUrl })
+      .expect(200);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/tenants/current')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .expect(200);
+    expect(res.body.logoDataUrl).toBe(tinyPngDataUrl);
+  });
+
+  it('PATCH /tenants/logo rejects a non-image data URL with a clean 400, not a raw crash', async () => {
+    await request(app.getHttpServer())
+      .patch('/v1/tenants/logo')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({ logoDataUrl: 'not-a-data-url-at-all' })
+      .expect(400);
+  });
+
+  it('PATCH /tenants/logo is forbidden for a teacher — logo changes are admin-only', async () => {
+    const teacherRes = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Logo Permission Test School',
+        slug: `logo-perm-${stamp}`,
+        adminEmail: `logo-perm-admin-${stamp}@newschool.ke`,
+        adminFullName: 'Logo Perm Admin',
+        adminPassword: password
+      })
+      .expect(201);
+    const adminToken = (
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email: `logo-perm-admin-${stamp}@newschool.ke`, password })
+        .expect(200)
+    ).body.tokens.accessToken;
+
+    const teacherEmail = `logo-perm-teacher-${stamp}@newschool.ke`;
+    await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({
+        email: teacherEmail,
+        fullName: 'Logo Perm Teacher',
+        password,
+        tenantId: teacherRes.body.tenantId,
+        role: 'teacher'
+      })
+      .expect(201);
+    const loginRes = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ email: teacherEmail, password })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch('/v1/tenants/logo')
+      .set('authorization', `Bearer ${loginRes.body.tokens.accessToken}`)
+      .send({
+        logoDataUrl:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+      })
+      .expect(403);
+    // adminToken isn't otherwise used in this test, but confirms the
+    // school admin login itself succeeded, which the teacher path
+    // depends on for tenant context.
+    expect(adminToken).toBeTruthy();
+  });
 });

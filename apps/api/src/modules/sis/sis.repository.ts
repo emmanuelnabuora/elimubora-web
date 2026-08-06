@@ -180,9 +180,11 @@ export class SisRepository {
         emergency_contact_phone: string | null;
         status: StudentProfile['status'];
         enrolled_at: Date;
+        photo_data_url: string | null;
       }>(
         `SELECT sp.student_id, u.full_name, sp.admission_number, sp.date_of_birth, sp.gender,
-                sp.address, sp.emergency_contact_name, sp.emergency_contact_phone, sp.status, sp.enrolled_at
+                sp.address, sp.emergency_contact_name, sp.emergency_contact_phone, sp.status, sp.enrolled_at,
+                sp.photo_data_url
            FROM sis.student_profiles sp
            JOIN sis.student_guardians sg ON sg.student_id = sp.student_id
            JOIN sis.guardians g ON g.id = sg.guardian_id
@@ -201,7 +203,8 @@ export class SisRepository {
         emergencyContactName: r.emergency_contact_name,
         emergencyContactPhone: r.emergency_contact_phone,
         status: r.status,
-        enrolledAt: r.enrolled_at.toISOString()
+        enrolledAt: r.enrolled_at.toISOString(),
+        photoDataUrl: r.photo_data_url
       }));
     });
   }
@@ -253,7 +256,8 @@ export class SisRepository {
         emergencyContactName: input.emergencyContactName ?? null,
         emergencyContactPhone: input.emergencyContactPhone ?? null,
         status: 'active',
-        enrolledAt: new Date().toISOString()
+        enrolledAt: new Date().toISOString(),
+        photoDataUrl: null
       };
     });
   }
@@ -270,9 +274,10 @@ export class SisRepository {
         emergency_contact_phone: string | null;
         status: StudentProfile['status'];
         enrolled_at: Date;
+        photo_data_url: string | null;
       }>(
         `SELECT student_id, admission_number, date_of_birth, gender, address,
-                emergency_contact_name, emergency_contact_phone, status, enrolled_at
+                emergency_contact_name, emergency_contact_phone, status, enrolled_at, photo_data_url
            FROM sis.student_profiles
           WHERE student_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
         [studentId]
@@ -288,7 +293,8 @@ export class SisRepository {
             emergencyContactName: r.emergency_contact_name,
             emergencyContactPhone: r.emergency_contact_phone,
             status: r.status,
-            enrolledAt: r.enrolled_at.toISOString()
+            enrolledAt: r.enrolled_at.toISOString(),
+            photoDataUrl: r.photo_data_url
           }
         : null;
     });
@@ -328,6 +334,26 @@ export class SisRepository {
         allergies: r.allergies,
         medicalNotes: r.medical_notes
       };
+    });
+  }
+
+  /**
+   * Updates a student's profile photo — a simple field update on
+   * sis.student_profiles directly, not a separate upsert-into-a-
+   * related-table like medical records, since photo_data_url lives
+   * on the profile row itself.
+   */
+  async updateStudentPhoto(studentId: string, photoDataUrl: string): Promise<void> {
+    return this.db.withTenantTransaction(async (client) => {
+      await client.query(
+        `UPDATE sis.student_profiles SET photo_data_url = $2 WHERE student_id = $1 AND tenant_id = core.current_tenant_id()`,
+        [studentId, photoDataUrl]
+      );
+      await this.audit.record(client, {
+        action: 'student.photo_updated',
+        entityType: 'student_profile',
+        entityId: studentId
+      });
     });
   }
 

@@ -21,7 +21,8 @@ import type {
   GraduateStudentDto,
   LinkGuardianDto,
   RequestTransferDto,
-  UpdateMedicalDto
+  UpdateMedicalDto,
+  UpdatePhotoDto
 } from './sis.dto';
 import { SisRepository } from './sis.repository';
 import type {
@@ -258,6 +259,15 @@ export class SisService {
       throw new ForbiddenException('Medical records are restricted to school administration');
     }
     return this.repo.upsertMedical(studentId, dto);
+  }
+
+  async updatePhoto(user: AuthenticatedUser, studentId: string, dto: UpdatePhotoDto): Promise<{ photoDataUrl: string }> {
+    const STAFF_ROLES = new Set(['teacher', 'school_admin', 'principal', 'platform_admin']);
+    if (!STAFF_ROLES.has(user.role)) {
+      throw new ForbiddenException('Only school staff can update a student photo');
+    }
+    await this.repo.updateStudentPhoto(studentId, dto.photoDataUrl);
+    return { photoDataUrl: dto.photoDataUrl };
   }
 
   // ---------------- transfers ----------------

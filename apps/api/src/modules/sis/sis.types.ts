@@ -22,6 +22,7 @@ export interface StudentProfile {
   emergencyContactPhone: string | null;
   status: StudentStatus;
   enrolledAt: string;
+  photoDataUrl: string | null;
 }
 
 export interface StudentMedical {
