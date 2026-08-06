@@ -9,7 +9,8 @@ import { WorkerDatabaseService } from './database/worker-database.service';
 import { HealthController } from './health/health.controller';
 import {
   DevLogNotificationChannel,
-  NOTIFICATION_CHANNEL
+  NOTIFICATION_CHANNEL,
+  PostmarkNotificationChannel
 } from './notifications/notification';
 import { EVENT_PUBLISHER, InProcessEventPublisher } from './outbox/event-publisher';
 import { OutboxRelay } from './outbox/outbox.relay';
@@ -63,7 +64,14 @@ import { TenantProvisioningService } from './tenancy/tenant-provisioning.service
   providers: [
     { provide: APP_CONFIG, useFactory: () => loadConfig(process.env) },
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
-    { provide: NOTIFICATION_CHANNEL, useClass: DevLogNotificationChannel },
+    {
+      provide: NOTIFICATION_CHANNEL,
+      useFactory: (config: ReturnType<typeof loadConfig>) =>
+        config.postmark?.apiToken && config.postmark?.fromEmail
+          ? new PostmarkNotificationChannel(config)
+          : new DevLogNotificationChannel(),
+      inject: [APP_CONFIG]
+    },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     TenantProvisioningService,
     DatabaseService,

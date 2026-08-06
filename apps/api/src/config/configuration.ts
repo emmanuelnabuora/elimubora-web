@@ -48,7 +48,13 @@ const schema = z.object({
   ALLOW_OPEN_REGISTRATION: z
     .string()
     .transform((v) => v === 'true')
-    .default('false')
+    .default('false'),
+  /** Optional deliberately: when unset, notifications fall back to
+   *  DevLogNotificationChannel (logging only), matching local dev
+   *  and test behavior unchanged. Both must be set together for real
+   *  delivery — see core.module.ts's provider selection. */
+  POSTMARK_API_TOKEN: z.string().optional(),
+  POSTMARK_FROM_EMAIL: z.string().email().optional()
 });
 
 export interface AppConfig {
@@ -61,6 +67,10 @@ export interface AppConfig {
   publicWebUrl: string;
   uploadsDir: string;
   corsAllowedOrigins: string[];
+  postmark?: {
+    apiToken: string | null;
+    fromEmail: string | null;
+  };
   auth: {
     invitationTtlDays: number;
     passwordResetTtlMinutes: number;
@@ -96,6 +106,10 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     corsAllowedOrigins: v.CORS_ALLOWED_ORIGINS
       ? v.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
       : [v.PUBLIC_WEB_URL],
+    postmark: {
+      apiToken: v.POSTMARK_API_TOKEN ?? null,
+      fromEmail: v.POSTMARK_FROM_EMAIL ?? null
+    },
     auth: {
       invitationTtlDays: v.INVITATION_TTL_DAYS,
       passwordResetTtlMinutes: v.PASSWORD_RESET_TTL_MINUTES,
