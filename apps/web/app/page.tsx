@@ -18,24 +18,23 @@ const features = [
 ];
 
 /**
- * Landing page, rebuilt to match a second supplied mockup -- simpler
- * headline ("Welcome to ElimuBora"), varied per-feature icon colors
- * instead of uniform purple, no stats bar, and the "Building a
- * smarter..." line as a dark banner rather than a separate white
- * card.
+ * Landing page, matching the supplied "Welcome to ElimuBora" mockup
+ * as closely as possible, including its illustration -- the hero
+ * image (public/landing-hero.png) is a crop of the mockup's own
+ * screenshot, extracting just the school-scene illustration and
+ * excluding the surrounding text and login card. The crop's
+ * background color (#F4F1FD) was confirmed to closely match this
+ * page's actual background (--eb-bg-panel, #F5F4FF), so it blends in
+ * without needing transparency processing the way the earlier
+ * Kenya-shaped image did.
  *
- * The hero illustration is unchanged from before (still
- * landing-hero.png, the Kenya-shaped one) -- the new mockup's flat-
- * vector school scene was only supplied as a full-page screenshot,
- * not as an isolated asset, so there's nothing to swap in yet.
- *
- * "Email or Admission Number": the label and placeholder now say
- * this (matching the mockup), and the input type was changed from
- * email to text so the browser's built-in validation doesn't reject
- * an admission number as an invalid email address. The backend
- * itself still only authenticates by email -- admission-number login
- * is a real, separate feature that doesn't exist yet, not something
- * this label change implements.
+ * "Email or Admission Number": the label and placeholder say this
+ * (matching the mockup), and the input type is text rather than email
+ * so the browser's built-in validation doesn't reject an admission
+ * number as an invalid email address. The backend itself still only
+ * authenticates by email -- admission-number login is a real,
+ * separate feature that doesn't exist yet, not something this label
+ * change implements.
  */
 export default function Home() {
   return (
@@ -43,23 +42,7 @@ export default function Home() {
       <div style={{ height: 4, background: 'linear-gradient(90deg, #4338CA, #5B4CF5, #6C5CFF)' }} />
       <div className="auth-split">
         <section className="auth-illustration">
-          <div className="auth-illustration-content" style={{ padding: '0 60px', gap: 'var(--ds-space-lg, 24px)' }}>
-            <img
-              src="/landing-hero.png"
-              alt=""
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                top: '9%',
-                right: '-4%',
-                width: 'min(56%, 640px)',
-                maxHeight: 640,
-                height: 'auto',
-                opacity: 1,
-                filter: 'drop-shadow(0 12px 24px rgba(35, 40, 107, 0.22))'
-              }}
-            />
-
+          <div className="auth-illustration-content" style={{ padding: '48px 60px 0', gap: 'var(--ds-space-lg, 24px)', justifyContent: 'flex-start' }}>
             <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: '64px', letterSpacing: '-0.02em', margin: 0, maxWidth: 460 }}>
               Welcome to
               <br />
@@ -94,6 +77,13 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+
+            <img
+              src="/landing-hero.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '100%', height: 'auto', marginTop: 'auto', display: 'block' }}
+            />
           </div>
 
           <div
