@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogo, MicrosoftLogo } from '../../../components/icons';
-import type { RoleConfig } from '../../../lib/roles';
+import { ROLE_CONFIG, type RoleConfig } from '../../../lib/roles';
 
 interface Membership {
   tenantId: string;
@@ -12,7 +12,30 @@ interface Membership {
   role: string;
 }
 
-type Stage = 'credentials' | 'mfa' | 'select_institution';
+/**
+ * Maps a backend membership role to the frontend role-tab slug it
+ * belongs under. Several backend roles collapse into one tab
+ * (school_admin/principal/platform_admin -> admin;
+ * county_officer/ministry_official -> ministry) since the login UI
+ * only exposes five role choices, not eight.
+ */
+function membershipRoleToSlug(role: string): string {
+  switch (role) {
+    case 'learner':
+      return 'student';
+    case 'school_admin':
+    case 'principal':
+    case 'platform_admin':
+      return 'admin';
+    case 'county_officer':
+    case 'ministry_official':
+      return 'ministry';
+    default:
+      return role; // teacher, parent already match their slug directly
+  }
+}
+
+type Stage = 'credentials' | 'mfa' | 'select_institution' | 'role_mismatch';
 
 /** Excludes `icon` (a component reference) — functions can't cross the
  *  server-to-client-component boundary, and this form never renders it anyway. */
@@ -28,6 +51,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [actualRoleSlugs, setActualRoleSlugs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,6 +70,19 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         return;
       }
       if (data.status === 'authenticated') {
+        const loginMemberships = (data.memberships as Membership[] | undefined) ?? [];
+        const roleSlugs = [...new Set(loginMemberships.map((m) => membershipRoleToSlug(m.role)))];
+        // The login itself already succeeded and cookies are set at
+        // this point -- this check is purely about not silently
+        // sending someone to a dashboard that won't match what they
+        // expected from the role tab they picked, which is what was
+        // actually happening before (a blind redirect regardless of
+        // whether the account's real role matched the selected tab).
+        if (roleSlugs.length > 0 && !roleSlugs.includes(role.slug)) {
+          setActualRoleSlugs(roleSlugs);
+          setStage('role_mismatch');
+          return;
+        }
         router.push('/dashboard');
         return;
       }
@@ -93,6 +130,37 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
     } finally {
       setLoading(false);
     }
+  }
+
+  if (stage === 'role_mismatch') {
+    return (
+      <div className={cardClass} style={{ ['--door-accent' as string]: role.accent }}>
+        <h2 className="auth-step-label">Wrong role selected</h2>
+        <p className="auth-desc">
+          This account isn&rsquo;t registered as a {role.label}. You&rsquo;re signed in — you just picked the wrong
+          tab.
+        </p>
+        <div className="institution-list">
+          {actualRoleSlugs.map((slug) => {
+            const actualRole = ROLE_CONFIG[slug];
+            if (!actualRole) return null;
+            return (
+              <a key={slug} href={`/login/${slug}`} className="institution-option">
+                <span>Sign in as {actualRole.label}</span>
+              </a>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className="auth-social-button"
+          style={{ width: '100%', marginTop: 'var(--eb-space-3)' }}
+          onClick={() => router.push('/dashboard')}
+        >
+          Continue anyway
+        </button>
+      </div>
+    );
   }
 
   if (stage === 'select_institution') {
