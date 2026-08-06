@@ -30,8 +30,8 @@ export function LandingLoginPanel() {
   const role = ROLE_CONFIG[active]!;
 
   return (
-    <div className="auth-card" style={{ ['--door-accent' as string]: role.accent }}>
-      <div style={{ textAlign: 'center', marginBottom: 'var(--ds-space-lg, 24px)' }}>
+    <div className="auth-card" style={{ maxWidth: 420, ['--door-accent' as string]: role.accent }}>
+      <div style={{ textAlign: 'center', marginBottom: 'var(--eb-space-4)' }}>
         <h2 style={{ margin: '0 0 4px' }}>Sign in to your account</h2>
         <p className="auth-desc" style={{ margin: 0 }}>
           Access your ElimuBora portal
@@ -42,10 +42,10 @@ export function LandingLoginPanel() {
         role="tablist"
         aria-label="Choose your role"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 10,
-          marginBottom: 'var(--ds-space-lg, 24px)'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: 8,
+          marginBottom: 'var(--eb-space-4)'
         }}
       >
         {TAB_ROLES.map((slug) => {
@@ -62,24 +62,18 @@ export function LandingLoginPanel() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
                 gap: 6,
-                flex: '1 1 0',
-                minWidth: 0,
-                padding: '12px 6px',
-                borderRadius: 14,
+                padding: '10px 6px',
+                borderRadius: 10,
                 border: isActive ? '1.5px solid var(--eb-primary)' : '1px solid var(--eb-line)',
                 background: isActive ? 'var(--eb-green-100)' : 'var(--eb-surface)',
                 color: isActive ? 'var(--eb-primary)' : 'var(--eb-fg-muted)',
                 cursor: 'pointer',
                 fontSize: 12,
-                fontWeight: 600,
-                textAlign: 'center',
-                lineHeight: 1.2,
-                transition: 'transform 250ms ease, background-color 250ms ease, border-color 250ms ease'
+                fontWeight: 600
               }}
             >
-              <TabIcon width={22} height={22} />
+              <TabIcon width={18} height={18} />
               {TAB_LABELS[slug]}
             </button>
           );
