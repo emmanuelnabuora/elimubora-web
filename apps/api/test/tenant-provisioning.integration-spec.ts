@@ -217,7 +217,7 @@ d('Tenant provisioning (integration)', () => {
     expect(classes.rows).toHaveLength(0);
   });
 
-  it('facilities/technology/finance/branding are stored in tenants.settings — real record-keeping, not silently dropped', async () => {
+  it('facilities/technology/finance/branding/institution/contacts/migration are all stored in tenants.settings — real record-keeping, not silently dropped', async () => {
     const res = await request(app.getHttpServer())
       .post('/v1/tenants')
       .set('authorization', `Bearer ${platformAdminToken}`)
@@ -227,9 +227,21 @@ d('Tenant provisioning (integration)', () => {
         adminEmail: `full-profile-admin-${stamp}@newschool.ke`,
         adminFullName: 'Full Profile Admin',
         adminPassword: password,
+        shortName: 'FPA',
+        registrationNumber: 'REG-12345',
+        educationLevel: 'Primary & Junior School',
+        ownership: 'Private',
+        yearEstablished: '2010',
+        motto: 'Knowledge for all',
         subCounty: 'Westlands',
         ward: 'Parklands',
         physicalAddress: '123 Waiyaki Way',
+        contacts: [
+          { role: 'Principal / Headteacher', fullName: 'Jane Principal', phone: '0700000001', email: 'principal@fpa.ke', preferredChannel: 'EMAIL' },
+          { role: 'Bursar', fullName: 'Bob Bursar', phone: '0700000002', preferredChannel: 'PHONE' }
+        ],
+        migrationMethod: 'IMPORT',
+        migrationNotes: 'Migrating from a spreadsheet system.',
         facilities: ['Library', 'Computer Laboratory'],
         technology: { connectivityType: 'Fibre', hasElectricity: true, wifiCoverage: 'Full' },
         finance: { currency: 'KES', paymentMethods: ['M-Pesa'], mpesaNumber: '0700000000' },
@@ -239,6 +251,23 @@ d('Tenant provisioning (integration)', () => {
 
     const tenantRow = await admin.query(`SELECT settings FROM core.tenants WHERE id = $1`, [res.body.tenantId]);
     const settings = tenantRow.rows[0].settings;
+    expect(settings.institution).toEqual({
+      shortName: 'FPA',
+      registrationNumber: 'REG-12345',
+      educationLevel: 'Primary & Junior School',
+      ownership: 'Private',
+      yearEstablished: '2010',
+      motto: 'Knowledge for all'
+    });
+    expect(settings.contacts).toHaveLength(2);
+    expect(settings.contacts[0]).toEqual({
+      role: 'Principal / Headteacher',
+      fullName: 'Jane Principal',
+      phone: '0700000001',
+      email: 'principal@fpa.ke',
+      preferredChannel: 'EMAIL'
+    });
+    expect(settings.migration).toEqual({ method: 'IMPORT', notes: 'Migrating from a spreadsheet system.' });
     expect(settings.location).toEqual({ subCounty: 'Westlands', ward: 'Parklands', physicalAddress: '123 Waiyaki Way' });
     expect(settings.facilities).toEqual(['Library', 'Computer Laboratory']);
     expect(settings.technology.connectivityType).toBe('Fibre');

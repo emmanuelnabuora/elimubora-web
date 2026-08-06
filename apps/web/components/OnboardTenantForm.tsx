@@ -29,7 +29,18 @@ const COUNTIES = [
   'Wajir', 'West Pokot'
 ];
 
-const STEPS = ['Institution', 'Location', 'Academics', 'Facilities', 'Technology', 'Finance', 'Branding', 'Administrator', 'Review'];
+const STEPS = ['Institution', 'Location', 'Contacts', 'Academics', 'Facilities', 'Technology', 'Finance', 'Branding', 'Administrator', 'Data migration', 'Review'];
+const MIGRATION_METHODS = ['EMPTY', 'IMPORT', 'ASSISTED'] as const;
+
+interface Contact {
+  role: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  preferredChannel: 'EMAIL' | 'PHONE' | 'SMS';
+}
+
+const emptyContact: Contact = { role: '', fullName: '', phone: '', email: '', preferredChannel: 'EMAIL' };
 
 interface WizardState {
   name: string;
@@ -37,9 +48,16 @@ interface WizardState {
   slugTouched: boolean;
   kind: (typeof KINDS)[number];
   countyCode: string;
+  shortName: string;
+  registrationNumber: string;
+  educationLevel: string;
+  ownership: string;
+  yearEstablished: string;
+  motto: string;
   subCounty: string;
   ward: string;
   physicalAddress: string;
+  contacts: Contact[];
   academicYear: number;
   gradeLevels: string[];
   streamsText: string;
@@ -62,6 +80,8 @@ interface WizardState {
   adminFullName: string;
   adminEmail: string;
   adminPassword: string;
+  migrationMethod: (typeof MIGRATION_METHODS)[number];
+  migrationNotes: string;
 }
 
 function slugify(name: string): string {
@@ -79,9 +99,16 @@ const initialState: WizardState = {
   slugTouched: false,
   kind: 'school',
   countyCode: '',
+  shortName: '',
+  registrationNumber: '',
+  educationLevel: '',
+  ownership: '',
+  yearEstablished: '',
+  motto: '',
   subCounty: '',
   ward: '',
   physicalAddress: '',
+  contacts: [],
   academicYear: new Date().getFullYear(),
   gradeLevels: [],
   streamsText: '',
@@ -103,7 +130,9 @@ const initialState: WizardState = {
   secondaryColor: '#23286B',
   adminFullName: '',
   adminEmail: '',
-  adminPassword: ''
+  adminPassword: '',
+  migrationMethod: 'EMPTY',
+  migrationNotes: ''
 };
 
 function toggleInArray(list: string[], value: string): string[] {
@@ -131,7 +160,7 @@ export function OnboardTenantForm() {
     if (!s.name.trim()) stepErrors.push('Name is required.');
     if (!/^[a-z0-9-]+$/.test(s.slug)) stepErrors.push('Slug must be lowercase letters, numbers, and hyphens only.');
   }
-  if (step === 7) {
+  if (step === 8) {
     if (!s.adminFullName.trim()) stepErrors.push('Administrator name is required.');
     if (!/^\S+@\S+\.\S+$/.test(s.adminEmail)) stepErrors.push('A valid administrator email is required.');
     if (s.adminPassword.length < 12) stepErrors.push('Password must be at least 12 characters.');
@@ -163,6 +192,7 @@ export function OnboardTenantForm() {
         .split(',')
         .map((v) => v.trim())
         .filter(Boolean);
+      const validContacts = s.contacts.filter((c) => c.role.trim() && c.fullName.trim());
       const res = await fetch('/api/admin/tenants', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -171,9 +201,24 @@ export function OnboardTenantForm() {
           slug: s.slug,
           kind: s.kind,
           countyCode: s.countyCode || undefined,
+          shortName: s.shortName || undefined,
+          registrationNumber: s.registrationNumber || undefined,
+          educationLevel: s.educationLevel || undefined,
+          ownership: s.ownership || undefined,
+          yearEstablished: s.yearEstablished || undefined,
+          motto: s.motto || undefined,
           subCounty: s.subCounty || undefined,
           ward: s.ward || undefined,
           physicalAddress: s.physicalAddress || undefined,
+          contacts: validContacts.length
+            ? validContacts.map((c) => ({
+                role: c.role,
+                fullName: c.fullName,
+                phone: c.phone || undefined,
+                email: c.email || undefined,
+                preferredChannel: c.preferredChannel
+              }))
+            : undefined,
           academicYear: s.gradeLevels.length && streams.length ? s.academicYear : undefined,
           gradeLevels: s.gradeLevels.length ? s.gradeLevels : undefined,
           streams: streams.length ? streams : undefined,
@@ -198,7 +243,9 @@ export function OnboardTenantForm() {
           branding: { primaryColor: s.primaryColor, secondaryColor: s.secondaryColor },
           adminEmail: s.adminEmail,
           adminFullName: s.adminFullName,
-          adminPassword: s.adminPassword
+          adminPassword: s.adminPassword,
+          migrationMethod: s.migrationMethod,
+          migrationNotes: s.migrationNotes || undefined
         })
       });
       const data = await res.json();
@@ -267,6 +314,7 @@ export function OnboardTenantForm() {
       </div>
 
       {step === 0 && (
+        <>
         <div className="admin-form-row">
           <label className="admin-field">
             <span>Name</span>
@@ -304,6 +352,35 @@ export function OnboardTenantForm() {
             </select>
           </label>
         </div>
+        <div className="admin-form-row">
+          <label className="admin-field">
+            <span>Short name (optional)</span>
+            <input value={s.shortName} onChange={(e) => update('shortName', e.target.value)} />
+          </label>
+          <label className="admin-field">
+            <span>Registration number (optional)</span>
+            <input value={s.registrationNumber} onChange={(e) => update('registrationNumber', e.target.value)} />
+          </label>
+          <label className="admin-field">
+            <span>Education level (optional)</span>
+            <input value={s.educationLevel} onChange={(e) => update('educationLevel', e.target.value)} placeholder="e.g. Primary & Junior School" />
+          </label>
+        </div>
+        <div className="admin-form-row">
+          <label className="admin-field">
+            <span>Ownership (optional)</span>
+            <input value={s.ownership} onChange={(e) => update('ownership', e.target.value)} placeholder="e.g. Government, Private" />
+          </label>
+          <label className="admin-field">
+            <span>Year established (optional)</span>
+            <input value={s.yearEstablished} onChange={(e) => update('yearEstablished', e.target.value)} maxLength={4} />
+          </label>
+          <label className="admin-field">
+            <span>Motto (optional)</span>
+            <input value={s.motto} onChange={(e) => update('motto', e.target.value)} />
+          </label>
+        </div>
+        </>
       )}
 
       {step === 1 && (
@@ -324,6 +401,85 @@ export function OnboardTenantForm() {
       )}
 
       {step === 2 && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0 }}>
+            Institution contacts beyond the login administrator — Principal, Deputy, Bursar, and similar.
+            Record-keeping only; these don't get portal accounts.
+          </p>
+          {s.contacts.map((c, i) => (
+            <div key={i} className="admin-form-row" style={{ alignItems: 'flex-end' }}>
+              <label className="admin-field">
+                <span>Role</span>
+                <input
+                  value={c.role}
+                  onChange={(e) =>
+                    update(
+                      'contacts',
+                      s.contacts.map((x, j) => (j === i ? { ...x, role: e.target.value } : x))
+                    )
+                  }
+                  placeholder="e.g. Principal / Headteacher"
+                />
+              </label>
+              <label className="admin-field">
+                <span>Full name</span>
+                <input
+                  value={c.fullName}
+                  onChange={(e) =>
+                    update(
+                      'contacts',
+                      s.contacts.map((x, j) => (j === i ? { ...x, fullName: e.target.value } : x))
+                    )
+                  }
+                />
+              </label>
+              <label className="admin-field">
+                <span>Phone</span>
+                <input
+                  value={c.phone}
+                  onChange={(e) =>
+                    update(
+                      'contacts',
+                      s.contacts.map((x, j) => (j === i ? { ...x, phone: e.target.value } : x))
+                    )
+                  }
+                />
+              </label>
+              <label className="admin-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={c.email}
+                  onChange={(e) =>
+                    update(
+                      'contacts',
+                      s.contacts.map((x, j) => (j === i ? { ...x, email: e.target.value } : x))
+                    )
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => update('contacts', s.contacts.filter((_, j) => j !== i))}
+                className="admin-nav-link"
+                style={{ padding: '9px 12px', marginBottom: 12 }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => update('contacts', [...s.contacts, { ...emptyContact }])}
+            className="admin-nav-link"
+            style={{ padding: '8px 14px' }}
+          >
+            + Add a contact
+          </button>
+        </>
+      )}
+
+      {step === 3 && (
         <>
           <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0 }}>
             Selecting grade levels and streams creates a real class for every combination automatically — e.g.
@@ -357,7 +513,7 @@ export function OnboardTenantForm() {
         </>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {FACILITY_OPTIONS.map((f) => (
             <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13 }}>
@@ -372,7 +528,7 @@ export function OnboardTenantForm() {
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <>
           <div className="admin-form-row">
             <label className="admin-field">
@@ -417,7 +573,7 @@ export function OnboardTenantForm() {
         </>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <>
           <div className="admin-form-row">
             <label className="admin-field">
@@ -453,7 +609,7 @@ export function OnboardTenantForm() {
         </>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <div className="admin-form-row">
           <label className="admin-field">
             <span>Primary color</span>
@@ -466,7 +622,7 @@ export function OnboardTenantForm() {
         </div>
       )}
 
-      {step === 7 && (
+      {step === 8 && (
         <>
           <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0 }}>
             Creates a real tenant and its first admin account together — that account can log in immediately, no
@@ -496,7 +652,41 @@ export function OnboardTenantForm() {
         </>
       )}
 
-      {step === 8 && (
+      {step === 9 && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--eb-fg-muted)', marginTop: 0 }}>
+            How will this school bring in any existing records?
+          </p>
+          <label className="admin-field" style={{ maxWidth: 260, marginBottom: 'var(--eb-space-3)' }}>
+            <span>Method</span>
+            <select
+              value={s.migrationMethod}
+              onChange={(e) => update('migrationMethod', e.target.value as WizardState['migrationMethod'])}
+            >
+              <option value="EMPTY">Start empty — enrol as we go</option>
+              <option value="IMPORT">Import existing records ourselves</option>
+              <option value="ASSISTED">Need help migrating records</option>
+            </select>
+          </label>
+          <label className="admin-field">
+            <span>Notes (optional)</span>
+            <textarea
+              value={s.migrationNotes}
+              onChange={(e) => update('migrationNotes', e.target.value)}
+              rows={3}
+              style={{
+                fontFamily: 'var(--eb-font-body)',
+                fontSize: 14,
+                padding: '10px 14px',
+                borderRadius: 16,
+                border: '1px solid var(--eb-line)'
+              }}
+            />
+          </label>
+        </>
+      )}
+
+      {step === 10 && (
         <table className="data-table">
           <tbody>
             <tr>
@@ -512,8 +702,16 @@ export function OnboardTenantForm() {
               <td>{s.kind}</td>
             </tr>
             <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Registration number</td>
+              <td>{s.registrationNumber || '—'}</td>
+            </tr>
+            <tr>
               <td style={{ color: 'var(--eb-fg-muted)' }}>County</td>
               <td>{s.countyCode || '—'}</td>
+            </tr>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Contacts</td>
+              <td>{s.contacts.length ? `${s.contacts.length} added` : '—'}</td>
             </tr>
             <tr>
               <td style={{ color: 'var(--eb-fg-muted)' }}>Grade levels / streams</td>
@@ -530,6 +728,10 @@ export function OnboardTenantForm() {
               <td>
                 {s.adminFullName || '—'} ({s.adminEmail || '—'})
               </td>
+            </tr>
+            <tr>
+              <td style={{ color: 'var(--eb-fg-muted)' }}>Data migration</td>
+              <td>{s.migrationMethod}</td>
             </tr>
           </tbody>
         </table>

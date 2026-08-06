@@ -27,6 +27,36 @@ export const createTenantSchema = z.object({
   ward: z.string().max(120).optional(),
   physicalAddress: z.string().max(500).optional(),
 
+  // Extended institution profile -- record-keeping, stored in
+  // tenants.settings alongside the fields above.
+  shortName: z.string().max(60).optional(),
+  registrationNumber: z.string().max(60).optional(),
+  educationLevel: z.string().max(80).optional(),
+  ownership: z.string().max(60).optional(),
+  yearEstablished: z.string().max(4).optional(),
+  motto: z.string().max(200).optional(),
+
+  // Contacts: a dynamic list beyond the login administrator --
+  // Principal, Deputy, Bursar, etc. Also record-keeping, not tied to
+  // any portal account.
+  contacts: z
+    .array(
+      z.object({
+        role: z.string().max(80),
+        fullName: z.string().max(200),
+        phone: z.string().max(20).optional(),
+        email: z.string().email().optional(),
+        preferredChannel: z.enum(['EMAIL', 'PHONE', 'SMS']).optional()
+      })
+    )
+    .max(20)
+    .optional(),
+
+  // Data migration: how the school intends to bring in existing
+  // records, if at all.
+  migrationMethod: z.enum(['EMPTY', 'IMPORT', 'ASSISTED']).optional(),
+  migrationNotes: z.string().max(2000).optional(),
+
   // Academics: when gradeLevels + streams are both provided, a real
   // class stream is created for every grade x stream combination as
   // part of provisioning -- the one genuinely load-bearing addition

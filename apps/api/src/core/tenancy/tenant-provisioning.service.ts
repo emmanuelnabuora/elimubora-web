@@ -74,15 +74,28 @@ export class TenantProvisioningService {
     try {
       await this.db.withContext({ tenantId, actorId: actor.userId }, async (client) => {
         const settings = {
+          institution: {
+            shortName: dto.shortName ?? null,
+            registrationNumber: dto.registrationNumber ?? null,
+            educationLevel: dto.educationLevel ?? null,
+            ownership: dto.ownership ?? null,
+            yearEstablished: dto.yearEstablished ?? null,
+            motto: dto.motto ?? null
+          },
           location: {
             subCounty: dto.subCounty ?? null,
             ward: dto.ward ?? null,
             physicalAddress: dto.physicalAddress ?? null
           },
+          contacts: dto.contacts ?? [],
           facilities: dto.facilities ?? [],
           technology: dto.technology ?? null,
           finance: dto.finance ?? null,
-          branding: dto.branding ?? null
+          branding: dto.branding ?? null,
+          migration: {
+            method: dto.migrationMethod ?? null,
+            notes: dto.migrationNotes ?? null
+          }
         };
         await client.query(
           `INSERT INTO core.tenants (id, slug, name, kind, county_code, settings) VALUES ($1, $2, $3, $4, $5, $6)`,
