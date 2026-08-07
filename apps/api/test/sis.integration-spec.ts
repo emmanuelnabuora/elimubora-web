@@ -324,11 +324,15 @@ d('Student Information System (integration)', () => {
     expect(profile.body.status).toBe('graduated');
   });
 
-  it('GET /class-streams lists tenant-scoped class streams, admin-only', async () => {
-    await request(app.getHttpServer())
+  it('GET /class-streams lists tenant-scoped class streams, staff-only (teacher and admin)', async () => {
+    // Teachers need this list too -- to pick a class when marking
+    // attendance, for instance -- so this is deliberately staff-wide,
+    // not admin-only.
+    const asTeacher = await request(app.getHttpServer())
       .get('/v1/class-streams')
       .set('authorization', `Bearer ${teacherToken}`)
-      .expect(403);
+      .expect(200);
+    expect(asTeacher.body.find((s: { id: string }) => s.id === classStreamId)).toBeDefined();
 
     const res = await request(app.getHttpServer())
       .get('/v1/class-streams')
@@ -338,7 +342,7 @@ d('Student Information System (integration)', () => {
     expect(stream).toMatchObject({ name: 'Grade 4 Blue', gradeLevel: 'G4' });
   });
 
-  it('GET /students lists tenant-scoped students with name and current class, admin-only', async () => {
+  it('GET /students lists tenant-scoped students with name and current class, staff-only (teacher and admin)', async () => {
     // A dedicated, freshly-enrolled student — not the shared studentId
     // fixture, whose status/class allocation earlier tests in this
     // file have already mutated (transferred out) by this point.
@@ -358,10 +362,13 @@ d('Student Information System (integration)', () => {
       })
       .expect(201);
 
-    await request(app.getHttpServer())
+    const asTeacher = await request(app.getHttpServer())
       .get('/v1/students')
       .set('authorization', `Bearer ${teacherToken}`)
-      .expect(403);
+      .expect(200);
+    expect(
+      asTeacher.body.find((s: { studentId: string }) => s.studentId === dedicatedStudent.body.studentId)
+    ).toBeDefined();
 
     const res = await request(app.getHttpServer())
       .get('/v1/students')

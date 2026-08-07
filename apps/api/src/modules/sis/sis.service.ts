@@ -35,6 +35,7 @@ import type {
 } from './sis.types';
 
 const ADMIN_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
+const STAFF_ROLES = new Set(['teacher', 'school_admin', 'principal', 'platform_admin']);
 /** Medical data is the platform's most sensitive per-student field — deliberately narrower than ADMIN_ROLES. */
 const MEDICAL_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
 
@@ -49,6 +50,12 @@ export class SisService {
   private requireAdmin(user: AuthenticatedUser): void {
     if (!ADMIN_ROLES.has(user.role)) {
       throw new ForbiddenException('Only school administration can perform this action');
+    }
+  }
+
+  private requireStaff(user: AuthenticatedUser): void {
+    if (!STAFF_ROLES.has(user.role)) {
+      throw new ForbiddenException('Only school staff can perform this action');
     }
   }
 
@@ -118,7 +125,7 @@ export class SisService {
   }
 
   listClassStreams(user: AuthenticatedUser) {
-    this.requireAdmin(user);
+    this.requireStaff(user);
     return this.repo.listClassStreams();
   }
 
@@ -127,7 +134,7 @@ export class SisService {
   }
 
   listStudents(user: AuthenticatedUser) {
-    this.requireAdmin(user);
+    this.requireStaff(user);
     return this.repo.listStudents();
   }
 
