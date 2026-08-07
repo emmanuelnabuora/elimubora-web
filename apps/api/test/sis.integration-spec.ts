@@ -630,6 +630,48 @@ d('Student Information System (integration)', () => {
     expect(learnerTitles).not.toContain('Grade 9 notice');
   });
 
+  it('an announcement targeted at parents only, excluding students, does not appear in a learner\u2019s own announcements', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        title: 'Parents only — report card collection',
+        body: 'Collect from the front office.',
+        targetStudents: false,
+        targetParents: true,
+        targetTeachers: false
+      })
+      .expect(201);
+
+    const g4StudentB = await request(app.getHttpServer())
+      .post('/v1/students')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ fullName: 'Audience Test Student B', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+      .expect(201);
+    const pwB = await argon2.hash('A-genuinely-long-password-1', {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1
+    });
+    await db.query(`UPDATE core.users SET password_hash = $1 WHERE id = $2`, [pwB, g4StudentB.body.studentId]);
+    const emailRowB = await db.query(`SELECT email FROM core.users WHERE id = $1`, [g4StudentB.body.studentId]);
+    const learnerBToken = (
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email: emailRowB.rows[0].email, password: 'A-genuinely-long-password-1' })
+        .expect(200)
+    ).body.tokens.accessToken;
+
+    const learnerBView = await request(app.getHttpServer())
+      .get('/v1/announcements')
+      .set('authorization', `Bearer ${learnerBToken}`)
+      .expect(200);
+    expect(learnerBView.body.map((a: { title: string }) => a.title)).not.toContain(
+      'Parents only — report card collection'
+    );
+  });
+
   it('PATCH /students/:id/activate-account gives a shadow account real, usable credentials — admin-only', async () => {
     const student = await request(app.getHttpServer())
       .post('/v1/students')

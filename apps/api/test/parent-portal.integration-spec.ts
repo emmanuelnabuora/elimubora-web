@@ -252,6 +252,83 @@ d('Parent Portal (integration)', () => {
     expect(titles).not.toContain('Grade 7 trip');
   });
 
+  it('an announcement targeted at students only does not reach that grade\u2019s guardians', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({
+        title: 'Students only — locker cleanout',
+        body: 'Empty your locker by Friday.',
+        gradeLevel: 'G3',
+        targetStudents: true,
+        targetParents: false,
+        targetTeachers: false
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/parent-portal/announcements')
+      .set('authorization', `Bearer ${parentAToken}`)
+      .expect(200);
+    const titles = res.body.map((a: { title: string }) => a.title);
+    expect(titles).not.toContain('Students only — locker cleanout');
+  });
+
+  it('an announcement not targeted at teachers does not appear in the staff-facing list', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Parents only — fee reminder',
+        body: 'Term fees due Monday.',
+        targetStudents: false,
+        targetParents: true,
+        targetTeachers: false
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/announcements')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const titles = res.body.map((a: { title: string }) => a.title);
+    expect(titles).not.toContain('Parents only — fee reminder');
+  });
+
+  it('omitting audience fields defaults to reaching everyone, matching pre-audience-targeting behavior', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ title: 'No audience specified', body: 'Should reach everyone by default.' })
+      .expect(201);
+
+    const staffView = await request(app.getHttpServer())
+      .get('/v1/announcements')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    expect(staffView.body.map((a: { title: string }) => a.title)).toContain('No audience specified');
+
+    const parentView = await request(app.getHttpServer())
+      .get('/v1/parent-portal/announcements')
+      .set('authorization', `Bearer ${parentAToken}`)
+      .expect(200);
+    expect(parentView.body.map((a: { title: string }) => a.title)).toContain('No audience specified');
+  });
+
+  it('selecting no audience at all is rejected with a clear 400, not an announcement nobody will ever see', async () => {
+    await request(app.getHttpServer())
+      .post('/v1/announcements')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Reaches nobody',
+        body: 'x',
+        targetStudents: false,
+        targetParents: false,
+        targetTeachers: false
+      })
+      .expect(400);
+  });
+
   it('a non-staff account cannot post an announcement', async () => {
     await request(app.getHttpServer())
       .post('/v1/announcements')

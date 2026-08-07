@@ -113,6 +113,6 @@ export class ParentPortalController {
       const level = await this.sis.getCurrentGradeLevel(child.studentId);
       if (level) gradeLevels.add(level);
     }
-    return this.comms.listForGradeLevels([...gradeLevels]);
+    return this.comms.listForGradeLevels([...gradeLevels], 'parents');
   }
 }

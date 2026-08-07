@@ -3,6 +3,9 @@ export interface Announcement {
   title: string;
   body: string;
   gradeLevel: string | null;
+  targetStudents: boolean;
+  targetParents: boolean;
+  targetTeachers: boolean;
   createdBy: string;
   createdAt: string;
 }

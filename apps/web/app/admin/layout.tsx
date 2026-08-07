@@ -32,6 +32,7 @@ function buildSections(role: string): SaNavSection[] {
       label: 'ADMINISTRATION',
       items: [
         { href: '/admin/staff', label: 'Staff', icon: 'user-cog' },
+        { href: '/admin/announcements', label: 'Announcements', icon: 'megaphone' },
         { href: '/admin/leave-requests', label: 'Leave Requests', icon: 'clipboard-check' },
         { href: '/admin/school-settings', label: 'School Settings', icon: 'building' },
         { href: '/admin/logs', label: 'System Logs', icon: 'clipboard-list' }

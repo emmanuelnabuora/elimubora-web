@@ -34,7 +34,7 @@ export class AnnouncementsReadController {
     if (user.role === 'learner') {
       const profile = await this.sis.getMyProfile(user.userId);
       const gradeLevel = profile?.gradeLevel;
-      return this.comms.listForGradeLevels(gradeLevel ? [gradeLevel] : []);
+      return this.comms.listForGradeLevels(gradeLevel ? [gradeLevel] : [], 'students');
     }
     // Parents have their own, already-correct path
     // (GET /parent-portal/announcements, aggregated across every

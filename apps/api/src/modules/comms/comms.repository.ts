@@ -9,6 +9,9 @@ interface Row {
   title: string;
   body: string;
   grade_level: string | null;
+  target_students: boolean;
+  target_parents: boolean;
+  target_teachers: boolean;
   created_by: string;
   created_at: Date;
 }
@@ -17,6 +20,9 @@ const toAnnouncement = (r: Row): Announcement => ({
   title: r.title,
   body: r.body,
   gradeLevel: r.grade_level,
+  targetStudents: r.target_students,
+  targetParents: r.target_parents,
+  targetTeachers: r.target_teachers,
   createdBy: r.created_by,
   createdAt: r.created_at.toISOString()
 });
@@ -60,14 +66,23 @@ export class CommsRepository {
     private readonly audit: AuditService
   ) {}
 
-  async create(input: { title: string; body: string; gradeLevel?: string; createdBy: string }): Promise<Announcement> {
+  async create(input: {
+    title: string;
+    body: string;
+    gradeLevel?: string;
+    targetStudents: boolean;
+    targetParents: boolean;
+    targetTeachers: boolean;
+    createdBy: string;
+  }): Promise<Announcement> {
     return this.db.withTenantTransaction(async (client) => {
       const id = randomUUID();
       const { rows } = await client.query<Row>(
-        `INSERT INTO comms.announcements (id, tenant_id, title, body, grade_level, created_by)
-         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5)
+        `INSERT INTO comms.announcements
+           (id, tenant_id, title, body, grade_level, target_students, target_parents, target_teachers, created_by)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [id, input.title, input.body, input.gradeLevel ?? null, input.createdBy]
+        [id, input.title, input.body, input.gradeLevel ?? null, input.targetStudents, input.targetParents, input.targetTeachers, input.createdBy]
       );
       await this.audit.record(client, {
         action: 'announcement.created',
@@ -79,13 +94,23 @@ export class CommsRepository {
     });
   }
 
-  /** Relevant to a guardian: whole-school announcements plus those targeted at their child's grade. */
-  async listForGradeLevels(gradeLevels: string[], limit = 50): Promise<Announcement[]> {
+  /**
+   * Relevant to a student or a guardian: whole-school announcements
+   * plus those targeted at their (or their child's) grade -- and,
+   * with audience targeting, only the ones actually meant for that
+   * audience. The two callers (a learner reading their own
+   * announcements, a guardian reading a linked child's) pass
+   * 'students' or 'parents' respectively, since the same grade-level
+   * announcement can be scoped to reach one without the other.
+   */
+  async listForGradeLevels(gradeLevels: string[], audience: 'students' | 'parents', limit = 50): Promise<Announcement[]> {
+    const audienceColumn = audience === 'students' ? 'target_students' : 'target_parents';
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<Row>(
         `SELECT * FROM comms.announcements
           WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
             AND (grade_level IS NULL OR grade_level = ANY($1::text[]))
+            AND ${audienceColumn} = true
           ORDER BY created_at DESC
           LIMIT $2`,
         [gradeLevels, limit]
@@ -94,12 +119,12 @@ export class CommsRepository {
     });
   }
 
-  /** Every announcement in the tenant — the staff-facing view (a teacher or admin has no single "grade" to filter by, unlike a learner or a guardian's specific children). */
+  /** Every announcement targeted at teachers, in the tenant — the staff-facing view (a teacher or admin has no single "grade" to filter by, unlike a learner or a guardian's specific children). */
   async listAll(limit = 50): Promise<Announcement[]> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<Row>(
         `SELECT * FROM comms.announcements
-          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL AND target_teachers = true
           ORDER BY created_at DESC
           LIMIT $1`,
         [limit]
