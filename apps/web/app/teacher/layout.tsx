@@ -13,7 +13,8 @@ const SECTIONS: SaNavSection[] = [
       { href: '/teacher/grading', label: 'Grading', icon: 'graduation-cap' },
       { href: '/teacher/lesson-plans', label: 'Lesson Plans', icon: 'notebook-pen' },
       { href: '/teacher/announcements', label: 'Announcements', icon: 'megaphone' },
-      { href: '/teacher/messages', label: 'Messages', icon: 'message-circle' }
+      { href: '/teacher/messages', label: 'Messages', icon: 'message-circle' },
+      { href: '/teacher/leave-requests', label: 'Leave Requests', icon: 'clipboard-check' }
     ]
   }
 ];
