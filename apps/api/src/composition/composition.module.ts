@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CommsModule } from '../modules/comms/comms.module';
 import { FinanceModule } from '../modules/finance/finance.module';
 import { LearningModule } from '../modules/learning/learning.module';
+import { SchoolAdminModule } from '../modules/school-admin/school-admin.module';
 import { SisModule } from '../modules/sis/sis.module';
 import { TeacherPortalModule } from '../modules/teacher-portal/teacher-portal.module';
 import { AnalyticsController } from './analytics.controller';
@@ -18,7 +19,7 @@ import { TeacherDashboardController } from './teacher-dashboard.controller';
  * (dependency-cruiser) ensures no domain module ever imports back.
  */
 @Module({
-  imports: [LearningModule, TeacherPortalModule, SisModule, CommsModule, FinanceModule],
+  imports: [LearningModule, TeacherPortalModule, SisModule, CommsModule, FinanceModule, SchoolAdminModule],
   controllers: [TeacherDashboardController, ParentPortalController, AnalyticsController, AnnouncementsReadController]
 })
 export class CompositionModule {}

@@ -12,6 +12,7 @@ import { SchoolAdminService } from './school-admin.service';
  */
 @Module({
   controllers: [RoomsController, TimetableController, LeaveRequestsController],
-  providers: [SchoolAdminRepository, SchoolAdminService]
+  providers: [SchoolAdminRepository, SchoolAdminService],
+  exports: [SchoolAdminRepository]
 })
 export class SchoolAdminModule {}

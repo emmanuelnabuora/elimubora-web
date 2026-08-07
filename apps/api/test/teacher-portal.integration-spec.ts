@@ -272,4 +272,51 @@ d('Teacher Portal (integration)', () => {
     expect(dashboard.body.lessonPlansByCourse[courseId]).toHaveLength(1);
     void assignment;
   });
+
+  it('a course an admin creates and assigns to a teacher via a timetable slot appears on that teacher\'s dashboard, even though the teacher never created it', async () => {
+    // The actual bug: the dashboard used to only show courses where
+    // course.createdBy === the teacher's own userId, so a course an
+    // admin created (the normal real-world path) and then assigned to
+    // a teacher via the timetable never showed up for that teacher at
+    // all -- they'd have no course to select for grading.
+    const adminCourse = await request(app.getHttpServer())
+      .post('/v1/courses')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Admin-Created Course', learningArea: 'Science', gradeLevel: 'G5' })
+      .expect(201);
+
+    const room = await request(app.getHttpServer())
+      .post('/v1/rooms')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Dashboard Bug Test Room', roomType: 'classroom' })
+      .expect(201);
+
+    const teacherRow = await db.query(`SELECT id FROM core.users WHERE email = $1`, [teacherEmail]);
+    const teacherId = teacherRow.rows[0].id;
+
+    await request(app.getHttpServer())
+      .post('/v1/timetable')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        classStreamId,
+        courseId: adminCourse.body.id,
+        teacherId,
+        roomId: room.body.id,
+        academicYear: new Date().getFullYear(),
+        dayOfWeek: 3,
+        startTime: '10:00',
+        endTime: '11:00'
+      })
+      .expect(201);
+
+    const dashboard = await request(app.getHttpServer())
+      .get('/v1/teacher/dashboard')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const assignedCourse = dashboard.body.courses.find(
+      (c: { courseId: string }) => c.courseId === adminCourse.body.id
+    );
+    expect(assignedCourse).toBeDefined();
+    expect(assignedCourse.title).toBe('Admin-Created Course');
+  });
 });
