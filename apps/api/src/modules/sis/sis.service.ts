@@ -306,6 +306,11 @@ export class SisService {
     });
   }
 
+  async listTransfers(user: AuthenticatedUser) {
+    this.requireAdmin(user);
+    return this.repo.listTransfersForTenant(user.tenantId);
+  }
+
   async getTransfer(user: AuthenticatedUser, id: string): Promise<Transfer> {
     const transfer = await this.repo.findTransfer(id, user.tenantId);
     if (!transfer) throw new NotFoundException('Transfer not found');

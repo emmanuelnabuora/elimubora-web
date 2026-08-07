@@ -22,6 +22,7 @@ function buildSections(role: string): SaNavSection[] {
       items: [
         { href: '/admin/students', label: 'Students', icon: 'users' },
         { href: '/admin/admissions', label: 'Admissions', icon: 'clipboard-list' },
+        { href: '/admin/transfers', label: 'Transfers', icon: 'transfer-arrows' },
         { href: '/admin/subjects', label: 'Subjects', icon: 'notebook-pen' },
         { href: '/admin/timetable', label: 'Timetable', icon: 'calendar-clock' },
         { href: '/admin/messages', label: 'Messages', icon: 'message-circle' }

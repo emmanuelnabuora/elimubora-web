@@ -5,6 +5,7 @@ import { ActivateAccountForm } from './ActivateAccountForm';
 import { LinkGuardianAccountAction } from './LinkGuardianAccountAction';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { EditStudentDetailsForm } from './EditStudentDetailsForm';
+import { RequestTransferForm } from '../../../../components/RequestTransferForm';
 
 interface StudentListItem {
   studentId: string;
@@ -84,6 +85,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       <div className="admin-section">
         <h2 className="admin-section-title">Portal access</h2>
         <ActivateAccountForm studentId={studentId} />
+      </div>
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Transfer to another school</h2>
+        <RequestTransferForm studentId={studentId} />
       </div>
 
       <div className="admin-section">

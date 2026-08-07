@@ -943,6 +943,69 @@ export class SisRepository {
     );
   }
 
+  /**
+   * Every transfer involving this tenant, either side -- outgoing
+   * requests this school sent, or incoming requests another school
+   * sent to it. Relies on the transfers_either_side RLS policy
+   * (current_tenant_id() IN (from_tenant_id, to_tenant_id)) to scope
+   * correctly; no explicit tenant filter needed in the base query,
+   * matching findTransfer's approach just above.
+   *
+   * Enriches with names via LEFT JOIN rather than a second query:
+   * school names are always safe to resolve (core.tenants has no
+   * RLS at all, deliberately -- it's a global directory table).
+   * The student's name is a LEFT JOIN against core.users on purpose,
+   * not an inner join -- core.users' own RLS only allows seeing a
+   * user who has an active membership in the caller's tenant, which
+   * a transferring student genuinely doesn't have yet at the
+   * receiving school until the transfer is accepted. Rather than a
+   * second query with special-case logic, the LEFT JOIN just
+   * naturally resolves to null in that case, and the frontend shows
+   * a sensible fallback -- the safety boundary is enforced by RLS
+   * itself, not application code re-deciding it.
+   */
+  async listTransfersForTenant(
+    tenantId: string
+  ): Promise<Array<Transfer & { studentName: string | null; fromTenantName: string; toTenantName: string }>> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const { rows } = await client.query<{
+        id: string;
+        from_tenant_id: string;
+        to_tenant_id: string;
+        student_id: string;
+        requested_by: string;
+        status: TransferStatus;
+        reason: string | null;
+        decided_by: string | null;
+        decided_at: Date | null;
+        student_name: string | null;
+        from_tenant_name: string;
+        to_tenant_name: string;
+      }>(
+        `SELECT t.*, u.full_name AS student_name, ft.name AS from_tenant_name, tt.name AS to_tenant_name
+           FROM sis.transfers t
+           LEFT JOIN core.users u ON u.id = t.student_id
+           JOIN core.tenants ft ON ft.id = t.from_tenant_id
+           JOIN core.tenants tt ON tt.id = t.to_tenant_id
+          ORDER BY t.created_at DESC`
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        fromTenantId: r.from_tenant_id,
+        toTenantId: r.to_tenant_id,
+        studentId: r.student_id,
+        requestedBy: r.requested_by,
+        status: r.status,
+        reason: r.reason,
+        decidedBy: r.decided_by,
+        decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
+        studentName: r.student_name,
+        fromTenantName: r.from_tenant_name,
+        toTenantName: r.to_tenant_name
+      }));
+    });
+  }
+
   async findTransfer(id: string, tenantId: string): Promise<Transfer | null> {
     return this.db.withContext({ tenantId }, async (client) => {
       const { rows } = await client.query<{

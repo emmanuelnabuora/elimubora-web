@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
@@ -27,6 +27,12 @@ export class TenantProvisioningController {
   @Roles('learner', 'teacher', 'parent', 'school_admin', 'principal', 'county_officer', 'ministry_official', 'platform_admin')
   getCurrent(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getCurrentTenant(user);
+  }
+
+  @Get('schools')
+  @Roles('school_admin', 'principal', 'platform_admin')
+  listSchools(@CurrentUser() user: AuthenticatedUser, @Query('search') search?: string) {
+    return this.service.listSchools(user, search);
   }
 
   @Patch('logo')

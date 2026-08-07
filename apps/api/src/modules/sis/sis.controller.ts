@@ -240,6 +240,11 @@ export class StudentsController {
 export class TransfersController {
   constructor(private readonly sis: SisService) {}
 
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.listTransfers(user);
+  }
+
   @Get(':id')
   get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.sis.getTransfer(user, id);

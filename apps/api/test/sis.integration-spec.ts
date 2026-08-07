@@ -241,6 +241,35 @@ d('Student Information System (integration)', () => {
       .expect(200);
   });
 
+  it('GET /tenants/schools lists other schools for picking a transfer destination, excluding the caller\'s own', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v1/tenants/schools')
+      .query({ search: 'SIS School B' })
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const ids = res.body.map((s: { id: string }) => s.id);
+    expect(ids).toContain(tenantB);
+    expect(ids).not.toContain(tenantA);
+  });
+
+  it('GET /transfers lists it for both sides, but the student\'s name only resolves for the sending school — the receiving school genuinely can\'t see a student who isn\'t their member yet', async () => {
+    const senderView = await request(app.getHttpServer())
+      .get('/v1/transfers')
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    const senderRow = senderView.body.find((t: { id: string }) => t.id === transferId);
+    expect(senderRow).toBeDefined();
+    expect(senderRow.studentName).toBeTruthy();
+
+    const receiverView = await request(app.getHttpServer())
+      .get('/v1/transfers')
+      .set('authorization', `Bearer ${adminBToken}`)
+      .expect(200);
+    const receiverRow = receiverView.body.find((t: { id: string }) => t.id === transferId);
+    expect(receiverRow).toBeDefined();
+    expect(receiverRow.studentName).toBeNull();
+  });
+
   it('only the RECEIVING school can decide the transfer — the sender cannot self-approve', async () => {
     await request(app.getHttpServer())
       .patch(`/v1/transfers/${transferId}/decision`)

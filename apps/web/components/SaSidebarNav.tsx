@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  ArrowLeftRight,
   Building2,
   CalendarCheck,
   CalendarClock,
@@ -36,7 +37,8 @@ export type SaIconName =
   | 'graduation-cap'
   | 'notebook-pen'
   | 'building'
-  | 'message-circle';
+  | 'message-circle'
+  | 'transfer-arrows';
 
 export interface SaNavItem {
   href: string;
@@ -64,7 +66,8 @@ const ICONS: Record<SaIconName, LucideIcon> = {
   'calendar-check': CalendarCheck,
   'graduation-cap': GraduationCap,
   'notebook-pen': NotebookPen,
-  'message-circle': MessageCircle
+  'message-circle': MessageCircle,
+  'transfer-arrows': ArrowLeftRight
 };
 
 export function SaSidebarNav({ sections }: { sections: SaNavSection[] }) {

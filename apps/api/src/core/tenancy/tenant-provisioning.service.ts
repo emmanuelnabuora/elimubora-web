@@ -177,6 +177,40 @@ export class TenantProvisioningService {
   }
 
   /**
+   * Every other school in the platform, for picking a transfer
+   * destination. core.tenants has no RLS at all (relrowsecurity is
+   * false) -- deliberately, since it's the root directory table other
+   * tenant-scoped RLS policies themselves need to join against, so
+   * this is a plain query, not a tenant-scoped one like every other
+   * method in this file. Excludes the caller's own tenant (matching
+   * the DB check constraint that a transfer's to_tenant_id can't
+   * equal its from_tenant_id) and non-school tenant kinds (ministry,
+   * platform) -- neither is a valid transfer destination.
+   *
+   * Optional `search` parameter, not just a bigger LIMIT: found the
+   * real problem the hard way, via a failing test rather than a
+   * hunch. A fixed alphabetical top-200 slice works fine at small
+   * scale, but once a platform has enough schools, a school whose
+   * name happens to sort past position 200 becomes permanently
+   * impossible to select at all -- discovered directly when a freshly
+   * created test school didn't appear in this sandbox's (heavily
+   * test-polluted) results. A search-and-filter parameter is the
+   * actual fix; the LIMIT is a safety bound on an unfiltered browse,
+   * not the primary way of finding a specific school.
+   */
+  async listSchools(user: AuthenticatedUser, search?: string): Promise<Array<{ id: string; name: string }>> {
+    const { rows } = await this.db.withTenantTransaction(async (client) =>
+      client.query<{ id: string; name: string }>(
+        search
+          ? `SELECT id, name FROM core.tenants WHERE kind = 'school' AND id != $1 AND name ILIKE $2 ORDER BY name LIMIT 200`
+          : `SELECT id, name FROM core.tenants WHERE kind = 'school' AND id != $1 ORDER BY name LIMIT 200`,
+        search ? [user.tenantId, `%${search}%`] : [user.tenantId]
+      )
+    );
+    return rows;
+  }
+
+  /**
    * Updates the caller's own active tenant's logo. Restricted to
    * admin roles at the controller level -- unlike getCurrentTenant,
    * this one actually changes something.
