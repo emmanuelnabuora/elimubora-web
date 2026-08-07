@@ -252,6 +252,56 @@ export class UsersRepository {
     });
   }
 
+  /**
+   * Updates a user's display name. core.users is a global table (a
+   * person can belong to multiple tenants), so unlike most updates in
+   * this codebase there's no tenant_id column on the row itself to
+   * filter by directly -- the safety check is the same one
+   * updateMembership already does: confirm an active membership for
+   * this user exists in the caller's own current tenant before
+   * touching anything, so an admin at one school can't edit the name
+   * of someone who only belongs to a different school.
+   */
+  /**
+   * Updates a user's display name. core.users is a global table (a
+   * person can belong to multiple tenants), so unlike most updates in
+   * this codebase there's no tenant_id column on the row itself to
+   * filter by directly -- the safety check is the same one
+   * updateMembership already does: confirm an active membership for
+   * this user exists in the caller's own current tenant before
+   * touching anything, so an admin at one school can't edit the name
+   * of someone who only belongs to a different school.
+   *
+   * The actual UPDATE itself has to go through
+   * core.admin_update_user_full_name, a narrow SECURITY DEFINER
+   * function (migration 0023) -- core.users' own RLS only permits a
+   * user updating their own row, so a direct UPDATE here for anyone
+   * else's row would silently affect zero rows despite the membership
+   * check above passing. Found this exact gap live, via a failing
+   * test: the membership check succeeded, but the update itself did
+   * nothing, until this function was added.
+   */
+  async updateFullName(userId: string, fullName: string): Promise<boolean> {
+    return this.db.withTenantTransaction(async (client) => {
+      const membership = await client.query(
+        `SELECT 1 FROM core.memberships
+          WHERE user_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [userId]
+      );
+      if (membership.rowCount === 0) return false;
+      const res = await client.query<{ admin_update_user_full_name: boolean | null }>(
+        `SELECT core.admin_update_user_full_name($1, $2) AS admin_update_user_full_name`,
+        [userId, fullName]
+      );
+      await client.query(
+        `INSERT INTO core.audit_log (tenant_id, actor_id, action, entity_type, entity_id, after)
+         VALUES (core.current_tenant_id(), core.current_actor_id(), 'user.name_updated', 'user', $1, $2::jsonb)`,
+        [userId, JSON.stringify({ fullName })]
+      );
+      return res.rows[0]?.admin_update_user_full_name === true;
+    });
+  }
+
   async softDeleteMembership(userId: string): Promise<boolean> {
     return this.db.withTenantTransaction(async (client) => {
       const res = await client.query(

@@ -783,4 +783,44 @@ d('Student Information System (integration)', () => {
       .send({ photoDataUrl: 'not-an-image' })
       .expect(400);
   });
+
+  it('PATCH /students/:id/details updates the editable fields, and GET reflects them back', async () => {
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/details`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({
+        dateOfBirth: '2016-05-20',
+        gender: 'male',
+        address: '456 Test Lane, Nairobi',
+        emergencyContactName: 'Updated Contact',
+        emergencyContactPhone: '+254711000111'
+      })
+      .expect(200);
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/students/${studentId}`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    expect(res.body.dateOfBirth).toBe('2016-05-20');
+    expect(res.body.gender).toBe('male');
+    expect(res.body.address).toBe('456 Test Lane, Nairobi');
+    expect(res.body.emergencyContactName).toBe('Updated Contact');
+    expect(res.body.emergencyContactPhone).toBe('+254711000111');
+  });
+
+  it('PATCH /students/:id/details with an empty address genuinely clears it, not silently keeps the old value', async () => {
+    await request(app.getHttpServer())
+      .patch(`/v1/students/${studentId}/details`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .send({ address: '', emergencyContactName: '', emergencyContactPhone: '' })
+      .expect(200);
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/students/${studentId}`)
+      .set('authorization', `Bearer ${adminAToken}`)
+      .expect(200);
+    expect(res.body.address).toBeNull();
+    expect(res.body.emergencyContactName).toBeNull();
+    expect(res.body.emergencyContactPhone).toBeNull();
+  });
 });

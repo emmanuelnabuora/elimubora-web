@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -260,5 +261,58 @@ d('User management (integration)', () => {
     const { rows } = await appClient.query('SELECT count(*)::int AS n FROM core.users');
     await appClient.end();
     expect(rows[0].n).toBe(0); // FORCE RLS: no context, no rows
+  });
+
+  it('PATCH /users/:userId/name lets an admin edit a teacher\'s display name', async () => {
+    await request(app.getHttpServer())
+      .patch(`/v1/users/${teacherId}/name`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ fullName: 'Renamed Teacher' })
+      .expect(204);
+
+    const users = await request(app.getHttpServer())
+      .get('/v1/users?limit=100')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const renamed = users.body.find((u: { userId: string }) => u.userId === teacherId);
+    expect(renamed.fullName).toBe('Renamed Teacher');
+  });
+
+  it('PATCH /users/:userId/name — unlike membership changes, an admin can edit their own name', async () => {
+    const admin = await request(app.getHttpServer())
+      .get('/v1/users?limit=100')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const self = admin.body.find((u: { email: string }) => u.email === adminEmail);
+
+    await request(app.getHttpServer())
+      .patch(`/v1/users/${self.userId}/name`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ fullName: 'Self Renamed Admin' })
+      .expect(204);
+  });
+
+  it('PATCH /users/:userId/name is a clean 404 for a user with no membership in the caller\'s tenant', async () => {
+    await request(app.getHttpServer())
+      .patch(`/v1/users/${randomUUID()}/name`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ fullName: 'Nobody' })
+      .expect(404);
+  });
+
+  it('PATCH /users/:userId/name is forbidden for a teacher — renaming staff is admin-only', async () => {
+    // Uses 'Another-very-long-password-2', not the file-level
+    // `password` const: the earlier password-reset test in this same
+    // file permanently changed this account's password, and that
+    // persists for the rest of the file's run.
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ email: teacherEmail, password: 'Another-very-long-password-2' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/v1/users/${teacherId}/name`)
+      .set('authorization', `Bearer ${res.body.tokens.accessToken}`)
+      .send({ fullName: 'Should Not Work' })
+      .expect(403);
   });
 });

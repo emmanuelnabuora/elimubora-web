@@ -4,6 +4,7 @@ import { AddGuardianForm } from './AddGuardianForm';
 import { ActivateAccountForm } from './ActivateAccountForm';
 import { LinkGuardianAccountAction } from './LinkGuardianAccountAction';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
+import { EditStudentDetailsForm } from './EditStudentDetailsForm';
 
 interface StudentListItem {
   studentId: string;
@@ -77,30 +78,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
       <div className="admin-section">
         <h2 className="admin-section-title">Details</h2>
-        <table className="data-table">
-          <tbody>
-            <tr>
-              <td style={{ color: 'var(--eb-fg-muted)', width: 200 }}>Date of birth</td>
-              <td>{profile.dateOfBirth ?? '—'}</td>
-            </tr>
-            <tr>
-              <td style={{ color: 'var(--eb-fg-muted)' }}>Gender</td>
-              <td style={{ textTransform: 'capitalize' }}>{profile.gender ?? '—'}</td>
-            </tr>
-            <tr>
-              <td style={{ color: 'var(--eb-fg-muted)' }}>Address</td>
-              <td>{profile.address ?? '—'}</td>
-            </tr>
-            <tr>
-              <td style={{ color: 'var(--eb-fg-muted)' }}>Emergency contact</td>
-              <td>
-                {profile.emergencyContactName
-                  ? `${profile.emergencyContactName}${profile.emergencyContactPhone ? ` — ${profile.emergencyContactPhone}` : ''}`
-                  : '—'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <EditStudentDetailsForm studentId={studentId} profile={profile} />
       </div>
 
       <div className="admin-section">

@@ -24,6 +24,11 @@ export const updateMembershipSchema = z
   });
 export type UpdateMembershipDto = z.infer<typeof updateMembershipSchema>;
 
+export const updateFullNameSchema = z.object({
+  fullName: z.string().min(2).max(200)
+});
+export type UpdateFullNameDto = z.infer<typeof updateFullNameSchema>;
+
 export const listUsersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0)

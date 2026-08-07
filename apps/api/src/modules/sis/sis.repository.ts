@@ -338,6 +338,61 @@ export class SisRepository {
   }
 
   /**
+   * Updates the editable detail fields shown on the student detail
+   * page. Uses key presence, not value truthiness, to distinguish
+   * "this field wasn't included in the request" (keep the existing
+   * value untouched) from "this field was explicitly sent, even as
+   * an empty string" (apply it -- empty means clear). Found and fixed
+   * while writing this method's own test: an earlier version did an
+   * unconditional set of every column regardless of whether the
+   * field was present in the request body at all, which meant any
+   * caller sending a genuinely partial patch (omitting a field
+   * entirely, not just leaving a form field blank) would silently
+   * wipe that column to null. The one caller today (the edit form)
+   * always sends every field together so this never showed up in
+   * practice, but the endpoint itself was still wrong.
+   */
+  async updateStudentDetails(
+    studentId: string,
+    patch: {
+      dateOfBirth?: string;
+      gender?: 'male' | 'female';
+      address?: string;
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
+    }
+  ): Promise<void> {
+    return this.db.withTenantTransaction(async (client) => {
+      const sets: string[] = [];
+      const values: unknown[] = [studentId];
+      const applyIfPresent = (key: keyof typeof patch, column: string) => {
+        if (key in patch) {
+          values.push(patch[key] || null);
+          sets.push(`${column} = $${values.length}`);
+        }
+      };
+      applyIfPresent('dateOfBirth', 'date_of_birth');
+      applyIfPresent('gender', 'gender');
+      applyIfPresent('address', 'address');
+      applyIfPresent('emergencyContactName', 'emergency_contact_name');
+      applyIfPresent('emergencyContactPhone', 'emergency_contact_phone');
+
+      if (sets.length > 0) {
+        await client.query(
+          `UPDATE sis.student_profiles SET ${sets.join(', ')}
+            WHERE student_id = $1 AND tenant_id = core.current_tenant_id()`,
+          values
+        );
+      }
+      await this.audit.record(client, {
+        action: 'student.details_updated',
+        entityType: 'student_profile',
+        entityId: studentId
+      });
+    });
+  }
+
+  /**
    * Updates a student's profile photo — a simple field update on
    * sis.student_profiles directly, not a separate upsert-into-a-
    * related-table like medical records, since photo_data_url lives

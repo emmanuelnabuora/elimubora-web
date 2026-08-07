@@ -15,9 +15,11 @@ import type { AuthenticatedUser } from './identity.types';
 import {
   createInvitationSchema,
   listUsersQuerySchema,
+  updateFullNameSchema,
   updateMembershipSchema,
   type CreateInvitationDto,
   type ListUsersQueryDto,
+  type UpdateFullNameDto,
   type UpdateMembershipDto
 } from './users.dto';
 import { UsersService } from './users.service';
@@ -61,6 +63,15 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateMembershipSchema)) dto: UpdateMembershipDto
   ): Promise<void> {
     await this.users.updateMembership(user.userId, userId, dto);
+  }
+
+  @Patch(':userId/name')
+  @HttpCode(204)
+  async updateFullName(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body(new ZodValidationPipe(updateFullNameSchema)) dto: UpdateFullNameDto
+  ): Promise<void> {
+    await this.users.updateFullName(userId, dto.fullName);
   }
 
   @Delete(':userId/membership')

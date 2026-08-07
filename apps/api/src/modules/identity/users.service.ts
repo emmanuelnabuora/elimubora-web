@@ -132,6 +132,17 @@ export class UsersService {
     }
   }
 
+  /**
+   * Updates a user's display name. Unlike updateMembership, editing
+   * your own name is fine — nothing here can be used to escalate
+   * privilege the way changing your own role could, so there's no
+   * self-edit block.
+   */
+  async updateFullName(targetUserId: string, fullName: string): Promise<void> {
+    const ok = await this.users.updateFullName(targetUserId, fullName);
+    if (!ok) throw new NotFoundException('No active membership for that user');
+  }
+
   async removeMembership(actorUserId: string, targetUserId: string): Promise<void> {
     if (actorUserId === targetUserId) {
       throw new ForbiddenException('You cannot remove your own membership');

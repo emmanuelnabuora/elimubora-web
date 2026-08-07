@@ -25,6 +25,7 @@ import {
   requestTransferSchema,
   updateMedicalSchema,
   updatePhotoSchema,
+  updateStudentDetailsSchema,
   type ActivateAccountDto,
   type CreateApplicationDto,
   type CreateBehaviourNoteDto,
@@ -38,7 +39,8 @@ import {
   type LinkGuardianDto,
   type RequestTransferDto,
   type UpdateMedicalDto,
-  type UpdatePhotoDto
+  type UpdatePhotoDto,
+  type UpdateStudentDetailsDto
 } from './sis.dto';
 import { SisService } from './sis.service';
 
@@ -190,6 +192,15 @@ export class StudentsController {
     @Body(new ZodValidationPipe(updatePhotoSchema)) dto: UpdatePhotoDto
   ) {
     return this.sis.updatePhoto(user, studentId, dto);
+  }
+
+  @Patch(':id/details')
+  updateDetails(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) studentId: string,
+    @Body(new ZodValidationPipe(updateStudentDetailsSchema)) dto: UpdateStudentDetailsDto
+  ) {
+    return this.sis.updateDetails(user, studentId, dto);
   }
 
   @Post(':id/transfers')

@@ -1,6 +1,7 @@
 import { apiFetch } from '../../../lib/api-client';
 import { InviteStaffForm } from './InviteStaffForm';
 import { InvitationsTable } from './InvitationsTable';
+import { EditStaffNameAction } from '../../../components/EditStaffNameAction';
 
 interface TenantUser {
   userId: string;
@@ -63,7 +64,9 @@ export default async function StaffPage() {
             <tbody>
               {staff.map((u) => (
                 <tr key={u.userId}>
-                  <td>{u.fullName}</td>
+                  <td>
+                    <EditStaffNameAction userId={u.userId} fullName={u.fullName} />
+                  </td>
                   <td>{u.email}</td>
                   <td style={{ textTransform: 'capitalize' }}>{u.role.replace('_', ' ')}</td>
                   <td>

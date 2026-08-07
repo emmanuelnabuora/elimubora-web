@@ -68,6 +68,15 @@ export const updatePhotoSchema = z.object({
 });
 export type UpdatePhotoDto = z.infer<typeof updatePhotoSchema>;
 
+export const updateStudentDetailsSchema = z.object({
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  gender: z.enum(['male', 'female']).optional(),
+  address: z.string().max(500).optional(),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactPhone: z.string().max(20).optional()
+});
+export type UpdateStudentDetailsDto = z.infer<typeof updateStudentDetailsSchema>;
+
 
 export const createClassStreamSchema = z.object({
   name: z.string().min(2).max(100),
