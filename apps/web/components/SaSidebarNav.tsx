@@ -11,6 +11,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Megaphone,
+  MessageCircle,
   NotebookPen,
   Sparkles,
   User,
@@ -34,7 +35,8 @@ export type SaIconName =
   | 'calendar-check'
   | 'graduation-cap'
   | 'notebook-pen'
-  | 'building';
+  | 'building'
+  | 'message-circle';
 
 export interface SaNavItem {
   href: string;
@@ -61,7 +63,8 @@ const ICONS: Record<SaIconName, LucideIcon> = {
   megaphone: Megaphone,
   'calendar-check': CalendarCheck,
   'graduation-cap': GraduationCap,
-  'notebook-pen': NotebookPen
+  'notebook-pen': NotebookPen,
+  'message-circle': MessageCircle
 };
 
 export function SaSidebarNav({ sections }: { sections: SaNavSection[] }) {

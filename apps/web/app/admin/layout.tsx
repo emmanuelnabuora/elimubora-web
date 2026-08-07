@@ -23,7 +23,8 @@ function buildSections(role: string): SaNavSection[] {
         { href: '/admin/students', label: 'Students', icon: 'users' },
         { href: '/admin/admissions', label: 'Admissions', icon: 'clipboard-list' },
         { href: '/admin/subjects', label: 'Subjects', icon: 'notebook-pen' },
-        { href: '/admin/timetable', label: 'Timetable', icon: 'calendar-clock' }
+        { href: '/admin/timetable', label: 'Timetable', icon: 'calendar-clock' },
+        { href: '/admin/messages', label: 'Messages', icon: 'message-circle' }
       ]
     },
     { label: 'FINANCE', items: [{ href: '/admin/fees', label: 'Fees', icon: 'wallet' }] },

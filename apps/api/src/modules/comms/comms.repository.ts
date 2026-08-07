@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { AuditService } from '../../core/audit/audit.service';
 import { DatabaseService } from '../../core/database/database.service';
-import type { Announcement } from './comms.types';
+import type { Announcement, Conversation, Message } from './comms.types';
 
 interface Row {
   id: string;
@@ -18,6 +18,38 @@ const toAnnouncement = (r: Row): Announcement => ({
   body: r.body,
   gradeLevel: r.grade_level,
   createdBy: r.created_by,
+  createdAt: r.created_at.toISOString()
+});
+
+interface ConversationRow {
+  id: string;
+  staff_id: string;
+  student_id: string;
+  last_message_at: Date;
+  created_at: Date;
+}
+const toConversation = (r: ConversationRow): Conversation => ({
+  id: r.id,
+  staffId: r.staff_id,
+  studentId: r.student_id,
+  lastMessageAt: r.last_message_at.toISOString(),
+  createdAt: r.created_at.toISOString()
+});
+
+interface MessageRow {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  read_at: Date | null;
+  created_at: Date;
+}
+const toMessage = (r: MessageRow): Message => ({
+  id: r.id,
+  conversationId: r.conversation_id,
+  senderId: r.sender_id,
+  body: r.body,
+  readAt: r.read_at ? r.read_at.toISOString() : null,
   createdAt: r.created_at.toISOString()
 });
 
@@ -73,6 +105,133 @@ export class CommsRepository {
         [limit]
       );
       return rows.map(toAnnouncement);
+    });
+  }
+
+  // ---------------- direct messaging ----------------
+
+  /**
+   * Starts a new conversation between this staff member and student,
+   * or continues the existing one if they've already messaged before
+   * — ON CONFLICT DO UPDATE against the (tenant, staff, student)
+   * unique constraint rather than a separate find-then-create round
+   * trip, so this is safe under concurrent sends too.
+   */
+  async startOrContinueConversation(input: {
+    staffId: string;
+    studentId: string;
+    body: string;
+  }): Promise<{ conversation: Conversation; message: Message }> {
+    return this.db.withTenantTransaction(async (client) => {
+      const convId = randomUUID();
+      const { rows: convRows } = await client.query<ConversationRow>(
+        `INSERT INTO comms.conversations (id, tenant_id, staff_id, student_id, last_message_at)
+         VALUES ($1, core.current_tenant_id(), $2, $3, now())
+         ON CONFLICT (tenant_id, staff_id, student_id)
+         DO UPDATE SET last_message_at = now(), updated_at = now()
+         RETURNING *`,
+        [convId, input.staffId, input.studentId]
+      );
+      const conversation = toConversation(convRows[0]!);
+
+      const msgId = randomUUID();
+      const { rows: msgRows } = await client.query<MessageRow>(
+        `INSERT INTO comms.messages (id, tenant_id, conversation_id, sender_id, body)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4)
+         RETURNING *`,
+        [msgId, conversation.id, input.staffId, input.body]
+      );
+      await this.audit.record(client, {
+        action: 'conversation.message_sent',
+        entityType: 'conversation',
+        entityId: conversation.id,
+        after: { senderId: input.staffId }
+      });
+      return { conversation, message: toMessage(msgRows[0]!) };
+    });
+  }
+
+  async sendReply(input: { conversationId: string; senderId: string; body: string }): Promise<Message> {
+    return this.db.withTenantTransaction(async (client) => {
+      const id = randomUUID();
+      const { rows } = await client.query<MessageRow>(
+        `INSERT INTO comms.messages (id, tenant_id, conversation_id, sender_id, body)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4)
+         RETURNING *`,
+        [id, input.conversationId, input.senderId, input.body]
+      );
+      await client.query(
+        `UPDATE comms.conversations SET last_message_at = now(), updated_at = now()
+          WHERE id = $1 AND tenant_id = core.current_tenant_id()`,
+        [input.conversationId]
+      );
+      await this.audit.record(client, {
+        action: 'conversation.message_sent',
+        entityType: 'conversation',
+        entityId: input.conversationId,
+        after: { senderId: input.senderId }
+      });
+      return toMessage(rows[0]!);
+    });
+  }
+
+  /** A conversation belongs to exactly two people — fetched by ID so the caller can verify participation before allowing access. */
+  async findConversation(conversationId: string): Promise<Conversation | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<ConversationRow>(
+        `SELECT * FROM comms.conversations
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [conversationId]
+      );
+      return rows[0] ? toConversation(rows[0]) : null;
+    });
+  }
+
+  /** Every conversation this user is a participant in, as either the staff side or the student side, with the other participant's name and an unread count for inbox display. */
+  async listConversationsForUser(
+    userId: string
+  ): Promise<Array<Conversation & { otherPartyName: string; unreadCount: number }>> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<
+        ConversationRow & { other_party_name: string; unread_count: string }
+      >(
+        `SELECT c.*,
+                u.full_name AS other_party_name,
+                (SELECT count(*) FROM comms.messages m
+                  WHERE m.conversation_id = c.id AND m.sender_id != $1
+                    AND m.read_at IS NULL AND m.deleted_at IS NULL) AS unread_count
+           FROM comms.conversations c
+           JOIN core.users u ON u.id = (CASE WHEN c.staff_id = $1 THEN c.student_id ELSE c.staff_id END)
+          WHERE c.tenant_id = core.current_tenant_id() AND c.deleted_at IS NULL
+            AND (c.staff_id = $1 OR c.student_id = $1)
+          ORDER BY c.last_message_at DESC`,
+        [userId]
+      );
+      return rows.map((r) => ({ ...toConversation(r), otherPartyName: r.other_party_name, unreadCount: Number(r.unread_count) }));
+    });
+  }
+
+  async listMessages(conversationId: string): Promise<Message[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<MessageRow>(
+        `SELECT * FROM comms.messages
+          WHERE conversation_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY created_at ASC`,
+        [conversationId]
+      );
+      return rows.map(toMessage);
+    });
+  }
+
+  /** Marks every unread message in the conversation as read, except the reader's own — you don't "read" what you sent yourself. */
+  async markConversationRead(conversationId: string, readerId: string): Promise<void> {
+    return this.db.withTenantTransaction(async (client) => {
+      await client.query(
+        `UPDATE comms.messages SET read_at = now(), updated_at = now()
+          WHERE conversation_id = $1 AND tenant_id = core.current_tenant_id()
+            AND sender_id != $2 AND read_at IS NULL AND deleted_at IS NULL`,
+        [conversationId, readerId]
+      );
     });
   }
 }
