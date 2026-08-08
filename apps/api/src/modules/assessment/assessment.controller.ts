@@ -28,6 +28,16 @@ import { AssessmentService } from './assessment.service';
 export class QuestionBanksController {
   constructor(private readonly service: AssessmentService) {}
 
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listQuestionBanks(user);
+  }
+
+  @Get(':id/questions')
+  listQuestions(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) bankId: string) {
+    return this.service.listQuestionsForBank(user, bankId);
+  }
+
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -67,6 +77,16 @@ export class QuestionBanksController {
 @Controller('exams')
 export class ExamsController {
   constructor(private readonly service: AssessmentService) {}
+
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listExams(user);
+  }
+
+  @Get('mine')
+  listMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listExamsForLearner(user);
+  }
 
   @Post()
   create(

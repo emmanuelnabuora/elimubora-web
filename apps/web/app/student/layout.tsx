@@ -10,6 +10,8 @@ const SECTIONS: SaNavSection[] = [
       { href: '/student/profile', label: 'My Profile', icon: 'user' },
       { href: '/student/timetable', label: 'My Timetable', icon: 'calendar-clock' },
       { href: '/student/assignments', label: 'Assignments', icon: 'clipboard-list' },
+      { href: '/student/exams', label: 'Exams', icon: 'graduation-cap' },
+      { href: '/student/certificates', label: 'Certificates', icon: 'clipboard-check' },
       { href: '/student/library', label: 'Library', icon: 'notebook-pen' },
       { href: '/student/announcements', label: 'Announcements', icon: 'megaphone' },
       { href: '/student/messages', label: 'Messages', icon: 'message-circle' },

@@ -58,6 +58,18 @@ export class AssessmentService {
     return this.repo.createQuestionBank({ ...dto, createdBy: user.userId });
   }
 
+  async listQuestionBanks(user: AuthenticatedUser): Promise<QuestionBank[]> {
+    this.requireStaff(user);
+    return this.repo.listQuestionBanksForTenant();
+  }
+
+  async listQuestionsForBank(user: AuthenticatedUser, bankId: string): Promise<Question[]> {
+    this.requireStaff(user);
+    const bank = await this.repo.findQuestionBank(bankId);
+    if (!bank) throw new NotFoundException('Question bank not found');
+    return this.repo.listQuestionsForBank(bankId);
+  }
+
   async createQuestion(
     user: AuthenticatedUser,
     bankId: string,
@@ -145,6 +157,35 @@ export class AssessmentService {
     return exam;
   }
 
+  /** Staff see every exam regardless of status; a learner sees only published ones. */
+  async listExams(user: AuthenticatedUser): Promise<Exam[]> {
+    const isStaff = STAFF_ROLES.has(user.role);
+    return this.repo.listExamsForTenant(!isStaff);
+  }
+
+  /**
+   * A learner's own exam list, each entry enriched with whatever
+   * attempt (if any) they already have on it -- so the UI can show
+   * "Start" vs "Continue" vs "Awaiting grading" vs a final score,
+   * rather than the frontend needing to separately query every
+   * exam's attempt state itself.
+   */
+  async listExamsForLearner(
+    user: AuthenticatedUser
+  ): Promise<Array<Exam & { myAttempt: ExamAttempt | null }>> {
+    if (user.role !== 'learner') {
+      throw new ForbiddenException('Only learners have their own exam list this way');
+    }
+    const exams = await this.repo.listExamsForTenant(true);
+    const withAttempts = await Promise.all(
+      exams.map(async (exam) => ({
+        ...exam,
+        myAttempt: await this.repo.findAttemptByExamAndLearner(exam.id, user.userId)
+      }))
+    );
+    return withAttempts;
+  }
+
   async updateExamStatus(user: AuthenticatedUser, id: string, status: Exam['status']): Promise<Exam> {
     this.requireStaff(user);
     const updated = await this.repo.updateExamStatus(id, status);
@@ -208,7 +249,10 @@ export class AssessmentService {
     return submitted;
   }
 
-  async listAttemptsForExam(user: AuthenticatedUser, examId: string): Promise<ExamAttempt[]> {
+  async listAttemptsForExam(
+    user: AuthenticatedUser,
+    examId: string
+  ): Promise<Array<ExamAttempt & { learnerName: string | null }>> {
     this.requireStaff(user);
     return this.repo.listAttemptsForExam(examId);
   }

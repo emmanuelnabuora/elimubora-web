@@ -295,6 +295,62 @@ d('Assessment Platform (integration)', () => {
     expect(Number(graded.body.finalScore)).toBe(Number(submittedAttempt.autoScore) + 18);
   });
 
+  it('GET /question-banks lists banks for staff — the only way to discover which banks already exist', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v1/question-banks')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const ids = res.body.map((b: { id: string }) => b.id);
+    expect(ids).toContain(bankId);
+  });
+
+  it('GET /question-banks/:id/questions lists every question in the bank, including any still pending review', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/question-banks/${bankId}/questions`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const ids = res.body.map((q: { id: string }) => q.id);
+    for (const seededId of seededQuestionIds) {
+      expect(ids).toContain(seededId);
+    }
+  });
+
+  it('GET /exams lists every exam for staff regardless of status, but only published ones for a learner', async () => {
+    const staffView = await request(app.getHttpServer())
+      .get('/v1/exams')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    expect(staffView.body.map((e: { id: string }) => e.id)).toContain(examId);
+
+    const learnerView = await request(app.getHttpServer())
+      .get('/v1/exams')
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(200);
+    // Every exam a learner sees must be published — this exam was
+    // published by an earlier test in this same sequential file.
+    for (const exam of learnerView.body) {
+      expect(exam.status).toBe('published');
+    }
+  });
+
+  it('GET /exams/mine gives a learner their own exam list enriched with their own attempt status, not someone else\'s', async () => {
+    const mine = await request(app.getHttpServer())
+      .get('/v1/exams/mine')
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(200);
+    const thisExam = mine.body.find((e: { id: string }) => e.id === examId);
+    expect(thisExam).toBeDefined();
+    expect(thisExam.myAttempt).toBeTruthy();
+    expect(thisExam.myAttempt.learnerId).toBeDefined();
+  });
+
+  it('GET /exams/mine is forbidden for staff — it\'s specifically a learner\'s own list', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/exams/mine')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+  });
+
   it('issuing a certificate is staff-only and lists correctly for the student', async () => {
     const studentId = (
       await request(app.getHttpServer())

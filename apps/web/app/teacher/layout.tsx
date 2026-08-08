@@ -11,6 +11,7 @@ const SECTIONS: SaNavSection[] = [
       { href: '/teacher/attendance', label: 'Attendance', icon: 'calendar-check' },
       { href: '/teacher/assignments', label: 'Assignments', icon: 'clipboard-list' },
       { href: '/teacher/grading', label: 'Grading', icon: 'graduation-cap' },
+      { href: '/teacher/exams', label: 'Exams', icon: 'sparkles' },
       { href: '/teacher/lesson-plans', label: 'Lesson Plans', icon: 'notebook-pen' },
       { href: '/teacher/announcements', label: 'Announcements', icon: 'megaphone' },
       { href: '/teacher/messages', label: 'Messages', icon: 'message-circle' },

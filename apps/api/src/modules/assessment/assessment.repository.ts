@@ -168,6 +168,18 @@ export class AssessmentRepository {
     });
   }
 
+  /** Every question bank in the tenant -- there was no way for a teacher to discover which banks already exist without this. */
+  async listQuestionBanksForTenant(): Promise<QuestionBank[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<BankRow>(
+        `SELECT * FROM assessment.question_banks
+          WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY title`
+      );
+      return rows.map(toBank);
+    });
+  }
+
   async createQuestion(input: {
     bankId: string;
     questionType: QuestionType;
@@ -262,6 +274,19 @@ export class AssessmentRepository {
     });
   }
 
+  /** Every question in a bank, including ones still pending AI-draft review -- a teacher managing a bank needs to see both, not just the ones already eligible for an exam draw. */
+  async listQuestionsForBank(bankId: string): Promise<Question[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<QuestionRow>(
+        `SELECT * FROM assessment.questions
+          WHERE bank_id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          ORDER BY created_at`,
+        [bankId]
+      );
+      return rows.map(toQuestion);
+    });
+  }
+
   // ---------------- exams ----------------
 
   async createExam(input: {
@@ -307,6 +332,30 @@ export class AssessmentRepository {
         [id]
       );
       return rows[0] ? toExam(rows[0]) : null;
+    });
+  }
+
+  /**
+   * Every exam in the tenant, for staff managing them, or only
+   * published ones for a learner deciding what to attempt --
+   * mirroring the same coarse-grained, tenant-wide (not
+   * course-enrollment-scoped) authorization already documented and
+   * accepted in AssessmentService.startAttempt, rather than
+   * introducing a different visibility rule here that the rest of
+   * this module doesn't have.
+   */
+  async listExamsForTenant(onlyPublished: boolean): Promise<Exam[]> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<ExamRow>(
+        onlyPublished
+          ? `SELECT * FROM assessment.exams
+              WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL AND status = 'published'
+              ORDER BY created_at DESC`
+          : `SELECT * FROM assessment.exams
+              WHERE tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+              ORDER BY created_at DESC`
+      );
+      return rows.map(toExam);
     });
   }
 
@@ -413,15 +462,26 @@ export class AssessmentRepository {
     });
   }
 
-  async listAttemptsForExam(examId: string): Promise<ExamAttempt[]> {
+  /**
+   * Every attempt on this exam, enriched with the learner's name --
+   * a teacher grading needs to know who they're grading, not just a
+   * bare learner UUID. Safe to JOIN directly here, unlike the
+   * cross-tenant transfers case: every learner attempting an exam is
+   * necessarily a member of this same tenant already (exams are
+   * tenant-scoped), so there's no RLS boundary being crossed the way
+   * there is for a student who hasn't yet joined a receiving school.
+   */
+  async listAttemptsForExam(examId: string): Promise<Array<ExamAttempt & { learnerName: string | null }>> {
     return this.db.withTenantTransaction(async (client) => {
-      const { rows } = await client.query<AttemptRow>(
-        `SELECT * FROM assessment.exam_attempts
-          WHERE exam_id = $1 AND tenant_id = core.current_tenant_id()
-          ORDER BY started_at`,
+      const { rows } = await client.query<AttemptRow & { learner_name: string | null }>(
+        `SELECT ea.*, u.full_name AS learner_name
+           FROM assessment.exam_attempts ea
+           LEFT JOIN core.users u ON u.id = ea.learner_id
+          WHERE ea.exam_id = $1 AND ea.tenant_id = core.current_tenant_id()
+          ORDER BY ea.started_at`,
         [examId]
       );
-      return rows.map(toAttempt);
+      return rows.map((r) => ({ ...toAttempt(r), learnerName: r.learner_name }));
     });
   }
 
