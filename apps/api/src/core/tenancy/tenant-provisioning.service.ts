@@ -1,10 +1,18 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PasswordService } from '../auth/password.service';
 import { DatabaseService } from '../database/database.service';
 import type { CreateTenantDto, UpdateTenantLogoDto } from './tenant-provisioning.dto';
+
+export interface PlatformStats {
+  totalUsers: number;
+  activatedUsers: number;
+  totalSchools: number;
+  byRole: Array<{ role: string; count: number }>;
+  byTenant: Array<{ tenantId: string; tenantName: string; tenantKind: string; count: number }>;
+}
 
 function isUniqueViolation(err: unknown, constraintName: string): boolean {
   return (
@@ -208,6 +216,24 @@ export class TenantProvisioningService {
       )
     );
     return rows;
+  }
+
+  /**
+   * Platform-wide user statistics -- aggregate counts only, never
+   * individual user rows. Explicitly platform_admin-only here in
+   * application code; the underlying database function
+   * (core.platform_stats) does no authorization of its own by
+   * design, matching how every other SECURITY DEFINER function in
+   * this schema works.
+   */
+  async getPlatformStats(user: AuthenticatedUser): Promise<PlatformStats> {
+    if (user.role !== 'platform_admin') {
+      throw new ForbiddenException('Only platform administrators can view platform-wide statistics');
+    }
+    const { rows } = await this.db.withTenantTransaction(async (client) =>
+      client.query<{ platform_stats: PlatformStats }>('SELECT core.platform_stats()')
+    );
+    return rows[0]!.platform_stats;
   }
 
   /**

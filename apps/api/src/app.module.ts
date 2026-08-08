@@ -12,6 +12,10 @@ import { AssessmentModule } from './modules/assessment/assessment.module';
 import { GovernmentModule } from './modules/government/government.module';
 import { LibraryModule } from './modules/library/library.module';
 import { MobileModule } from './modules/mobile/mobile.module';
+import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
+import { PlatformBusinessModule } from './modules/platform-business/platform-business.module';
+import { PlatformIntelligenceModule } from './modules/platform-intelligence/platform-intelligence.module';
+import { PlatformCommandModule } from './modules/platform-command/platform-command.module';
 import { AttendanceMarkerBindingModule } from './composition/attendance-marker-binding.module';
 import { CompositionModule } from './composition/composition.module';
 
@@ -35,6 +39,10 @@ import { CompositionModule } from './composition/composition.module';
     GovernmentModule,
     AttendanceMarkerBindingModule,
     MobileModule,
+    PlatformAdminModule,
+    PlatformBusinessModule,
+    PlatformIntelligenceModule,
+    PlatformCommandModule,
     CompositionModule
   ]
 })

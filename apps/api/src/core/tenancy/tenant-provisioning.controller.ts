@@ -35,6 +35,12 @@ export class TenantProvisioningController {
     return this.service.listSchools(user, search);
   }
 
+  @Get('platform-stats')
+  @Roles('platform_admin')
+  getPlatformStats(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getPlatformStats(user);
+  }
+
   @Patch('logo')
   @Roles('school_admin', 'principal', 'platform_admin')
   updateLogo(

@@ -451,4 +451,67 @@ d('Tenant provisioning (integration)', () => {
     // depends on for tenant context.
     expect(adminToken).toBeTruthy();
   });
+
+  it('GET /tenants/platform-stats returns aggregate counts only, and reflects a freshly created school and its admin', async () => {
+    const freshSchool = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: `Platform Stats Test School ${stamp}`,
+        slug: `platform-stats-${stamp}`,
+        adminEmail: `platform-stats-admin-${stamp}@newschool.ke`,
+        adminFullName: 'Platform Stats Admin',
+        adminPassword: password
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/tenants/platform-stats')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .expect(200);
+
+    expect(typeof res.body.totalUsers).toBe('number');
+    expect(typeof res.body.activatedUsers).toBe('number');
+    expect(typeof res.body.totalSchools).toBe('number');
+    expect(res.body.totalUsers).toBeGreaterThan(0);
+    // Never leaks individual user data -- aggregate shape only.
+    expect(res.body.users).toBeUndefined();
+    expect(res.body.emails).toBeUndefined();
+
+    const schoolAdminRoleEntry = res.body.byRole.find((r: { role: string }) => r.role === 'school_admin');
+    expect(schoolAdminRoleEntry).toBeDefined();
+    expect(schoolAdminRoleEntry.count).toBeGreaterThan(0);
+
+    const tenantEntry = res.body.byTenant.find(
+      (t: { tenantName: string }) => t.tenantName === `Platform Stats Test School ${stamp}`
+    );
+    expect(tenantEntry).toBeDefined();
+    expect(tenantEntry.count).toBe(1);
+    expect(tenantEntry.tenantKind).toBe('school');
+    expect(tenantEntry.tenantId).toBe(freshSchool.body.tenantId);
+  });
+
+  it('GET /tenants/platform-stats is forbidden for a school admin — this is platform_admin-only, not just admin-level', async () => {
+    const schoolResult = await request(app.getHttpServer())
+      .post('/v1/tenants')
+      .set('authorization', `Bearer ${platformAdminToken}`)
+      .send({
+        name: 'Not Platform Admin School',
+        slug: `not-platform-admin-${stamp}`,
+        adminEmail: `not-platform-admin-${stamp}@newschool.ke`,
+        adminFullName: 'Regular School Admin',
+        adminPassword: password
+      })
+      .expect(201);
+    const loginRes = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ email: `not-platform-admin-${stamp}@newschool.ke`, password })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/v1/tenants/platform-stats')
+      .set('authorization', `Bearer ${loginRes.body.tokens.accessToken}`)
+      .expect(403);
+    void schoolResult;
+  });
 });

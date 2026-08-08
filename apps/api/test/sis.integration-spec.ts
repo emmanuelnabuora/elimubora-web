@@ -63,7 +63,7 @@ d('Student Information System (integration)', () => {
     await db.connect();
     const t = await db.query(
       `INSERT INTO core.tenants (slug, name, kind) VALUES
-         ($1, 'SIS School A', 'school'), ($2, 'SIS School B', 'school')
+         ($1, 'SIS School A ${stamp}', 'school'), ($2, 'SIS School B ${stamp}', 'school')
        RETURNING id`,
       [`sis-a-${stamp}`, `sis-b-${stamp}`]
     );
@@ -244,7 +244,7 @@ d('Student Information System (integration)', () => {
   it('GET /tenants/schools lists other schools for picking a transfer destination, excluding the caller\'s own', async () => {
     const res = await request(app.getHttpServer())
       .get('/v1/tenants/schools')
-      .query({ search: 'SIS School B' })
+      .query({ search: `SIS School B ${stamp}` })
       .set('authorization', `Bearer ${adminAToken}`)
       .expect(200);
     const ids = res.body.map((s: { id: string }) => s.id);
