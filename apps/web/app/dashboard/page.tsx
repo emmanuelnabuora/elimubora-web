@@ -55,6 +55,11 @@ export default async function DashboardPage() {
               </li>
             ))}
           </ul>
+          {user.role === 'platform_admin' && (
+            <Link href="/super-admin" className="admin-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 'var(--eb-space-3)' }}>
+              Go to Super Admin Console →
+            </Link>
+          )}
           {ADMIN_ROLES.has(user.role) && (
             <Link href="/admin" className="admin-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 'var(--eb-space-3)' }}>
               Go to Admin Dashboard →

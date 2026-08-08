@@ -13,7 +13,10 @@ function buildSections(role: string): SaNavSection[] {
   if (role === 'platform_admin') {
     sections.push({
       label: 'PLATFORM',
-      items: [{ href: '/admin/tenants', label: 'Onboard an organization', icon: 'building' }]
+      items: [
+        { href: '/admin/tenants', label: 'Onboard an organization', icon: 'building' },
+        { href: '/super-admin', label: 'Super Admin Console', icon: 'sparkles' }
+      ]
     });
   }
   sections.push(
