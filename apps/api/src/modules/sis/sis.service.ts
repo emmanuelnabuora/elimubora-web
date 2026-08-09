@@ -11,16 +11,20 @@ import { PasswordService } from '../../core/auth/password.service';
 import { UserProvisioningService } from '../../core/identity/user-provisioning.service';
 import type {
   ActivateAccountDto,
+  ClearTransferRequestDto,
+  ConvertTransferRequestDto,
   CreateApplicationDto,
   CreateBehaviourNoteDto,
   CreateClassStreamDto,
   CreateGuardianDto,
   DecideApplicationDto,
   DecideTransferDto,
+  DeclineTransferRequestDto,
   EnrollStudentDto,
   GraduateStudentDto,
   LinkGuardianDto,
   RequestTransferDto,
+  SubmitTransferRequestDto,
   UpdateMedicalDto,
   UpdatePhotoDto,
   UpdateStudentDetailsDto
@@ -332,6 +336,75 @@ export class SisService {
       await this.repo.markTransferredOut(transfer.studentId, transfer.fromTenantId);
     }
     return this.getTransfer(user, id);
+  }
+
+  // ---------------- student-initiated transfer requests ----------------
+
+  /**
+   * A student asking their own school for a transfer -- deliberately
+   * lighter-weight than requestTransfer above, and not staff-gated:
+   * this is the student's own ask, landing in a queue their school's
+   * admin reviews, not a direct line to another school. It never
+   * bypasses the formal, host-school-approved sis.transfers flow --
+   * see convertTransferRequest below, which is the only path from
+   * here into that flow, and only once cleared.
+   */
+  async submitTransferRequest(user: AuthenticatedUser, dto: SubmitTransferRequestDto) {
+    if (user.role !== 'learner') {
+      throw new ForbiddenException('Only a student can submit their own transfer request');
+    }
+    if (dto.preferredTenantId === user.tenantId) {
+      throw new BadRequestException('Cannot request a transfer to the same school');
+    }
+    return this.repo.submitTransferRequest({
+      tenantId: user.tenantId,
+      studentId: user.userId,
+      requestedBy: user.userId,
+      preferredTenantId: dto.preferredTenantId,
+      reason: dto.reason
+    });
+  }
+
+  /** Staff see every request at the school; a learner sees only their own. */
+  async listTransferRequests(user: AuthenticatedUser) {
+    if (user.role === 'learner') {
+      return this.repo.listTransferRequestsForStudent(user.tenantId, user.userId);
+    }
+    this.requireAdmin(user);
+    return this.repo.listTransferRequestsForTenant(user.tenantId);
+  }
+
+  async clearTransferRequest(user: AuthenticatedUser, id: string, dto: ClearTransferRequestDto) {
+    this.requireAdmin(user);
+    const cleared = await this.repo.clearTransferRequest(id, user.tenantId, user.userId, dto.clearanceNote);
+    if (!cleared) throw new BadRequestException('Transfer request not found or not pending');
+    return cleared;
+  }
+
+  async declineTransferRequest(user: AuthenticatedUser, id: string, dto: DeclineTransferRequestDto) {
+    this.requireAdmin(user);
+    const declined = await this.repo.declineTransferRequest(id, user.tenantId, user.userId, dto.reason);
+    if (!declined) throw new BadRequestException('Transfer request not found or not pending');
+    return declined;
+  }
+
+  /**
+   * The one path from a student's informal ask into the real,
+   * formal transfer -- requires cleared = true at the database
+   * level (enforced in convertTransferRequest's own WHERE clause,
+   * not just checked here), so a request can't be converted before
+   * the school has actually confirmed the student is squared away.
+   */
+  async convertTransferRequest(user: AuthenticatedUser, id: string, dto: ConvertTransferRequestDto) {
+    this.requireAdmin(user);
+    if (dto.toTenantId === user.tenantId) {
+      throw new BadRequestException('Cannot transfer a student to the same school');
+    }
+    const result = await this.repo.convertTransferRequest(id, user.tenantId, dto.toTenantId, user.userId);
+    if (!result) {
+      throw new BadRequestException('Transfer request not found, not pending, or not yet cleared for transfer');
+    }
+    return result;
   }
 
   // ---------------- graduation ----------------

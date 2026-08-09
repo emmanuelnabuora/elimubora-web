@@ -97,6 +97,27 @@ export const decideTransferSchema = z.object({
 });
 export type DecideTransferDto = z.infer<typeof decideTransferSchema>;
 
+export const submitTransferRequestSchema = z.object({
+  preferredTenantId: z.string().uuid().optional(),
+  reason: z.string().trim().min(5).max(2000)
+});
+export type SubmitTransferRequestDto = z.infer<typeof submitTransferRequestSchema>;
+
+export const clearTransferRequestSchema = z.object({
+  clearanceNote: z.string().max(2000).optional()
+});
+export type ClearTransferRequestDto = z.infer<typeof clearTransferRequestSchema>;
+
+export const declineTransferRequestSchema = z.object({
+  reason: z.string().trim().min(5).max(2000)
+});
+export type DeclineTransferRequestDto = z.infer<typeof declineTransferRequestSchema>;
+
+export const convertTransferRequestSchema = z.object({
+  toTenantId: z.string().uuid()
+});
+export type ConvertTransferRequestDto = z.infer<typeof convertTransferRequestSchema>;
+
 export const graduateStudentSchema = z.object({
   cohortYear: z.number().int().min(2020).max(2100),
   notes: z.string().max(2000).optional()

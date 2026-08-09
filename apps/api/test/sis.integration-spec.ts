@@ -894,4 +894,168 @@ d('Student Information System (integration)', () => {
     expect(res.body.emergencyContactName).toBeNull();
     expect(res.body.emergencyContactPhone).toBeNull();
   });
+
+  describe('student-initiated transfer requests', () => {
+    let requestStudentId: string;
+    let requestLearnerToken: string;
+    let otherLearnerToken: string;
+
+    beforeAll(async () => {
+      const student = await request(app.getHttpServer())
+        .post('/v1/students')
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ fullName: 'Transfer Request Test Student', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+        .expect(201);
+      requestStudentId = student.body.studentId;
+      const pw = await argon2.hash('A-genuinely-long-password-1', {
+        type: argon2.argon2id,
+        memoryCost: 19_456,
+        timeCost: 2,
+        parallelism: 1
+      });
+      await db.query(`UPDATE core.users SET password_hash = $1 WHERE id = $2`, [pw, requestStudentId]);
+      const emailRow = await db.query(`SELECT email FROM core.users WHERE id = $1`, [requestStudentId]);
+      requestLearnerToken = (
+        await request(app.getHttpServer())
+          .post('/v1/auth/login')
+          .send({ email: emailRow.rows[0].email, password: 'A-genuinely-long-password-1' })
+          .expect(200)
+      ).body.tokens.accessToken;
+
+      const otherStudent = await request(app.getHttpServer())
+        .post('/v1/students')
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ fullName: 'Other Student For Isolation Check', gradeLevel: 'G4', classStreamId, academicYear: 2026 })
+        .expect(201);
+      await db.query(`UPDATE core.users SET password_hash = $1 WHERE id = $2`, [pw, otherStudent.body.studentId]);
+      const otherEmailRow = await db.query(`SELECT email FROM core.users WHERE id = $1`, [otherStudent.body.studentId]);
+      otherLearnerToken = (
+        await request(app.getHttpServer())
+          .post('/v1/auth/login')
+          .send({ email: otherEmailRow.rows[0].email, password: 'A-genuinely-long-password-1' })
+          .expect(200)
+      ).body.tokens.accessToken;
+    });
+
+    it('staff cannot submit a transfer request — this is specifically the student\'s own ask', async () => {
+      await request(app.getHttpServer())
+        .post('/v1/transfer-requests')
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: 'Testing staff cannot do this' })
+        .expect(403);
+    });
+
+    it('a student submits their own transfer request, staff see it but another student does not', async () => {
+      const submitted = await request(app.getHttpServer())
+        .post('/v1/transfer-requests')
+        .set('authorization', `Bearer ${requestLearnerToken}`)
+        .send({ preferredTenantId: tenantB, reason: 'Family relocating to a new area' })
+        .expect(201);
+      expect(submitted.body.status).toBe('pending');
+      expect(submitted.body.cleared).toBe(false);
+
+      const staffView = await request(app.getHttpServer())
+        .get('/v1/transfer-requests')
+        .set('authorization', `Bearer ${adminAToken}`)
+        .expect(200);
+      expect(staffView.body.map((r: { id: string }) => r.id)).toContain(submitted.body.id);
+      // Enriched with the real student name, not just a bare id.
+      const staffRow = staffView.body.find((r: { id: string }) => r.id === submitted.body.id);
+      expect(staffRow.studentName).toBeTruthy();
+
+      const ownView = await request(app.getHttpServer())
+        .get('/v1/transfer-requests')
+        .set('authorization', `Bearer ${requestLearnerToken}`)
+        .expect(200);
+      expect(ownView.body.map((r: { id: string }) => r.id)).toEqual([submitted.body.id]);
+
+      const otherLearnerView = await request(app.getHttpServer())
+        .get('/v1/transfer-requests')
+        .set('authorization', `Bearer ${otherLearnerToken}`)
+        .expect(200);
+      expect(otherLearnerView.body.map((r: { id: string }) => r.id)).not.toContain(submitted.body.id);
+    });
+
+    it('converting before clearance is rejected, even by a school admin', async () => {
+      const submitted = await request(app.getHttpServer())
+        .post('/v1/transfer-requests')
+        .set('authorization', `Bearer ${requestLearnerToken}`)
+        .send({ reason: 'Second request for the conversion-order test' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/v1/transfer-requests/${submitted.body.id}/convert`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ toTenantId: tenantB })
+        .expect(400);
+    });
+
+    it('clearing then converting creates a real, formal transfer that the host school can accept normally', async () => {
+      const submitted = await request(app.getHttpServer())
+        .post('/v1/transfer-requests')
+        .set('authorization', `Bearer ${requestLearnerToken}`)
+        .send({ reason: 'Third request, full happy path' })
+        .expect(201);
+
+      const cleared = await request(app.getHttpServer())
+        .patch(`/v1/transfer-requests/${submitted.body.id}/clear`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ clearanceNote: 'Fees settled, library books returned' })
+        .expect(200);
+      expect(cleared.body.cleared).toBe(true);
+
+      const converted = await request(app.getHttpServer())
+        .post(`/v1/transfer-requests/${submitted.body.id}/convert`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ toTenantId: tenantB })
+        .expect(201);
+      expect(converted.body.request.status).toBe('converted');
+      expect(converted.body.transfer.status).toBe('pending');
+      expect(converted.body.transfer.fromTenantId).toBe(tenantA);
+      expect(converted.body.transfer.toTenantId).toBe(tenantB);
+
+      // The formal transfer this created goes through the exact same
+      // host-school-approval flow as any other transfer -- it isn't
+      // a shortcut around it.
+      await request(app.getHttpServer())
+        .patch(`/v1/transfers/${converted.body.transfer.id}/decision`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ status: 'accepted' })
+        .expect(403);
+      await request(app.getHttpServer())
+        .patch(`/v1/transfers/${converted.body.transfer.id}/decision`)
+        .set('authorization', `Bearer ${adminBToken}`)
+        .send({ status: 'accepted' })
+        .expect(200);
+
+      // A converted request can't be converted again.
+      await request(app.getHttpServer())
+        .post(`/v1/transfer-requests/${submitted.body.id}/convert`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ toTenantId: tenantB })
+        .expect(400);
+    });
+
+    it('a school admin can decline a request instead of clearing it', async () => {
+      const submitted = await request(app.getHttpServer())
+        .post('/v1/transfer-requests')
+        .set('authorization', `Bearer ${requestLearnerToken}`)
+        .send({ reason: 'Fourth request, decline path' })
+        .expect(201);
+
+      const declined = await request(app.getHttpServer())
+        .patch(`/v1/transfer-requests/${submitted.body.id}/decline`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: 'Outstanding fee balance not yet resolved' })
+        .expect(200);
+      expect(declined.body.status).toBe('declined');
+
+      // A declined request can't later be cleared or converted.
+      await request(app.getHttpServer())
+        .patch(`/v1/transfer-requests/${submitted.body.id}/clear`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({})
+        .expect(400);
+    });
+  });
 });

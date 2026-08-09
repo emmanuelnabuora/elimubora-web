@@ -66,6 +66,26 @@ export interface Transfer {
   decidedAt: string | null;
 }
 
+export type TransferRequestStatus = 'pending' | 'declined' | 'converted';
+
+export interface TransferRequest {
+  id: string;
+  tenantId: string;
+  studentId: string;
+  requestedBy: string;
+  preferredTenantId: string | null;
+  reason: string | null;
+  status: TransferRequestStatus;
+  cleared: boolean;
+  clearedBy: string | null;
+  clearedAt: string | null;
+  clearanceNote: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
+  convertedTransferId: string | null;
+}
+
 export type BehaviourCategory = 'positive' | 'concern' | 'incident';
 
 export interface BehaviourNote {

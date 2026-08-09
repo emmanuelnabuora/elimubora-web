@@ -12,32 +12,40 @@ import type { AuthenticatedUser } from '../../core/auth/auth.types';
 import { ZodValidationPipe } from '../../core/http/zod-validation.pipe';
 import {
   activateAccountSchema,
+  clearTransferRequestSchema,
+  convertTransferRequestSchema,
   createApplicationSchema,
   createBehaviourNoteSchema,
   createClassStreamSchema,
   createGuardianSchema,
   decideApplicationSchema,
   decideTransferSchema,
+  declineTransferRequestSchema,
   enrollStudentSchema,
   graduateStudentSchema,
   linkGuardianAccountSchema,
   linkGuardianSchema,
   requestTransferSchema,
+  submitTransferRequestSchema,
   updateMedicalSchema,
   updatePhotoSchema,
   updateStudentDetailsSchema,
   type ActivateAccountDto,
+  type ClearTransferRequestDto,
+  type ConvertTransferRequestDto,
   type CreateApplicationDto,
   type CreateBehaviourNoteDto,
   type CreateClassStreamDto,
   type CreateGuardianDto,
   type DecideApplicationDto,
   type DecideTransferDto,
+  type DeclineTransferRequestDto,
   type EnrollStudentDto,
   type GraduateStudentDto,
   type LinkGuardianAccountDto,
   type LinkGuardianDto,
   type RequestTransferDto,
+  type SubmitTransferRequestDto,
   type UpdateMedicalDto,
   type UpdatePhotoDto,
   type UpdateStudentDetailsDto
@@ -257,5 +265,50 @@ export class TransfersController {
     @Body(new ZodValidationPipe(decideTransferSchema)) dto: DecideTransferDto
   ) {
     return this.sis.decideTransfer(user, id, dto);
+  }
+}
+
+@Controller('transfer-requests')
+export class TransferRequestsController {
+  constructor(private readonly sis: SisService) {}
+
+  @Get()
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.sis.listTransferRequests(user);
+  }
+
+  @Post()
+  submit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(submitTransferRequestSchema)) dto: SubmitTransferRequestDto
+  ) {
+    return this.sis.submitTransferRequest(user, dto);
+  }
+
+  @Patch(':id/clear')
+  clear(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(clearTransferRequestSchema)) dto: ClearTransferRequestDto
+  ) {
+    return this.sis.clearTransferRequest(user, id, dto);
+  }
+
+  @Patch(':id/decline')
+  decline(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(declineTransferRequestSchema)) dto: DeclineTransferRequestDto
+  ) {
+    return this.sis.declineTransferRequest(user, id, dto);
+  }
+
+  @Post(':id/convert')
+  convert(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(convertTransferRequestSchema)) dto: ConvertTransferRequestDto
+  ) {
+    return this.sis.convertTransferRequest(user, id, dto);
   }
 }

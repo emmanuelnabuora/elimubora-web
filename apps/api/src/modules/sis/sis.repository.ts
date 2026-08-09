@@ -12,8 +12,28 @@ import type {
   StudentMedical,
   StudentProfile,
   Transfer,
+  TransferRequest,
+  TransferRequestStatus,
   TransferStatus
 } from './sis.types';
+
+interface TransferRequestRow {
+  id: string;
+  tenant_id: string;
+  student_id: string;
+  requested_by: string;
+  preferred_tenant_id: string | null;
+  reason: string | null;
+  status: string;
+  cleared: boolean;
+  cleared_by: string | null;
+  cleared_at: Date | null;
+  clearance_note: string | null;
+  decided_by: string | null;
+  decided_at: Date | null;
+  decision_reason: string | null;
+  converted_transfer_id: string | null;
+}
 
 function isUniqueViolation(err: unknown, constraintName: string): boolean {
   return (
@@ -1080,6 +1100,234 @@ export class SisRepository {
           WHERE student_id = $1 AND tenant_id = core.current_tenant_id()`,
         [studentId]
       );
+    });
+  }
+
+  // ---------------- student-initiated transfer requests ----------------
+
+  async submitTransferRequest(input: {
+    tenantId: string;
+    studentId: string;
+    requestedBy: string;
+    preferredTenantId?: string;
+    reason: string;
+  }): Promise<TransferRequest> {
+    const id = randomUUID();
+    return this.db.withContext({ tenantId: input.tenantId, actorId: input.requestedBy }, async (client) => {
+      await client.query(
+        `INSERT INTO sis.transfer_requests (id, tenant_id, student_id, requested_by, preferred_tenant_id, reason)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [id, input.tenantId, input.studentId, input.requestedBy, input.preferredTenantId ?? null, input.reason]
+      );
+      await this.audit.record(client, {
+        action: 'transfer_request.submitted',
+        entityType: 'transfer_request',
+        entityId: id,
+        after: { studentId: input.studentId, preferredTenantId: input.preferredTenantId ?? null }
+      });
+      return {
+        id,
+        tenantId: input.tenantId,
+        studentId: input.studentId,
+        requestedBy: input.requestedBy,
+        preferredTenantId: input.preferredTenantId ?? null,
+        reason: input.reason,
+        status: 'pending',
+        cleared: false,
+        clearedBy: null,
+        clearedAt: null,
+        clearanceNote: null,
+        decidedBy: null,
+        decidedAt: null,
+        decisionReason: null,
+        convertedTransferId: null
+      };
+    });
+  }
+
+  private mapTransferRequestRow(r: TransferRequestRow): TransferRequest {
+    return {
+      id: r.id,
+      tenantId: r.tenant_id,
+      studentId: r.student_id,
+      requestedBy: r.requested_by,
+      preferredTenantId: r.preferred_tenant_id,
+      reason: r.reason,
+      status: r.status as TransferRequestStatus,
+      cleared: r.cleared,
+      clearedBy: r.cleared_by,
+      clearedAt: r.cleared_at ? r.cleared_at.toISOString() : null,
+      clearanceNote: r.clearance_note,
+      decidedBy: r.decided_by,
+      decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
+      decisionReason: r.decision_reason,
+      convertedTransferId: r.converted_transfer_id
+    };
+  }
+
+  /**
+   * Every request at this school, for staff -- enriched with the
+   * student's name and their preferred school's name where set.
+   * Safe to JOIN directly: unlike the cross-tenant sis.transfers
+   * case, a transfer_request's student is always this same tenant's
+   * own member, so there's no RLS boundary being crossed.
+   */
+  async listTransferRequestsForTenant(
+    tenantId: string
+  ): Promise<Array<TransferRequest & { studentName: string | null; preferredTenantName: string | null }>> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const { rows } = await client.query<TransferRequestRow & { student_name: string | null; preferred_tenant_name: string | null }>(
+        `SELECT tr.*, u.full_name AS student_name, pt.name AS preferred_tenant_name
+           FROM sis.transfer_requests tr
+           LEFT JOIN core.users u ON u.id = tr.student_id
+           LEFT JOIN core.tenants pt ON pt.id = tr.preferred_tenant_id
+          WHERE tr.tenant_id = core.current_tenant_id() AND tr.deleted_at IS NULL
+          ORDER BY tr.created_at DESC`
+      );
+      return rows.map((r) => ({
+        ...this.mapTransferRequestRow(r),
+        studentName: r.student_name,
+        preferredTenantName: r.preferred_tenant_name
+      }));
+    });
+  }
+
+  /** A single learner's own requests only -- used for the student-facing view. */
+  async listTransferRequestsForStudent(tenantId: string, studentId: string): Promise<TransferRequest[]> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const { rows } = await client.query<TransferRequestRow>(
+        `SELECT * FROM sis.transfer_requests
+          WHERE tenant_id = core.current_tenant_id() AND student_id = $1 AND deleted_at IS NULL
+          ORDER BY created_at DESC`,
+        [studentId]
+      );
+      return rows.map((r) => this.mapTransferRequestRow(r));
+    });
+  }
+
+  async findTransferRequest(id: string, tenantId: string): Promise<TransferRequest | null> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const { rows } = await client.query<TransferRequestRow>(
+        `SELECT * FROM sis.transfer_requests
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [id]
+      );
+      return rows[0] ? this.mapTransferRequestRow(rows[0]) : null;
+    });
+  }
+
+  async clearTransferRequest(
+    id: string,
+    tenantId: string,
+    clearedBy: string,
+    clearanceNote?: string
+  ): Promise<TransferRequest | null> {
+    return this.db.withContext({ tenantId, actorId: clearedBy }, async (client) => {
+      const { rows } = await client.query<TransferRequestRow>(
+        `UPDATE sis.transfer_requests
+            SET cleared = true, cleared_by = $2, cleared_at = now(), clearance_note = $3
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND status = 'pending'
+          RETURNING *`,
+        [id, clearedBy, clearanceNote ?? null]
+      );
+      if (!rows[0]) return null;
+      await this.audit.record(client, {
+        action: 'transfer_request.cleared',
+        entityType: 'transfer_request',
+        entityId: id,
+        after: { clearedBy }
+      });
+      return this.mapTransferRequestRow(rows[0]);
+    });
+  }
+
+  async declineTransferRequest(
+    id: string,
+    tenantId: string,
+    decidedBy: string,
+    reason: string
+  ): Promise<TransferRequest | null> {
+    return this.db.withContext({ tenantId, actorId: decidedBy }, async (client) => {
+      const { rows } = await client.query<TransferRequestRow>(
+        `UPDATE sis.transfer_requests
+            SET status = 'declined', decided_by = $2, decided_at = now(), decision_reason = $3
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND status = 'pending'
+          RETURNING *`,
+        [id, decidedBy, reason]
+      );
+      if (!rows[0]) return null;
+      await this.audit.record(client, {
+        action: 'transfer_request.declined',
+        entityType: 'transfer_request',
+        entityId: id,
+        after: { reason }
+      });
+      return this.mapTransferRequestRow(rows[0]);
+    });
+  }
+
+  /**
+   * Creates the formal, existing sis.transfers record and links this
+   * request to it in one transaction -- both must succeed together,
+   * since a formal transfer created without the link (or a link
+   * without the formal transfer) would leave this in a genuinely
+   * inconsistent state. Requires cleared = true and status = 'pending'
+   * at the database level (not just checked in application code), so
+   * this can't be called twice or on an unlceared request even under
+   * a race.
+   */
+  async convertTransferRequest(
+    id: string,
+    tenantId: string,
+    toTenantId: string,
+    decidedBy: string
+  ): Promise<{ request: TransferRequest; transfer: Transfer } | null> {
+    return this.db.withContext({ tenantId, actorId: decidedBy }, async (client) => {
+      const reqRows = await client.query<TransferRequestRow>(
+        `SELECT * FROM sis.transfer_requests
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND status = 'pending' AND cleared = true
+          FOR UPDATE`,
+        [id]
+      );
+      const existing = reqRows.rows[0];
+      if (!existing) return null;
+
+      const transferId = randomUUID();
+      await client.query(
+        `INSERT INTO sis.transfers (id, from_tenant_id, to_tenant_id, student_id, requested_by, reason)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [transferId, tenantId, toTenantId, existing.student_id, decidedBy, existing.reason]
+      );
+
+      const updatedRows = await client.query<TransferRequestRow>(
+        `UPDATE sis.transfer_requests
+            SET status = 'converted', decided_by = $2, decided_at = now(), converted_transfer_id = $3
+          WHERE id = $1
+          RETURNING *`,
+        [id, decidedBy, transferId]
+      );
+
+      await this.audit.record(client, {
+        action: 'transfer_request.converted',
+        entityType: 'transfer_request',
+        entityId: id,
+        after: { transferId, toTenantId }
+      });
+
+      return {
+        request: this.mapTransferRequestRow(updatedRows.rows[0]!),
+        transfer: {
+          id: transferId,
+          fromTenantId: tenantId,
+          toTenantId,
+          studentId: existing.student_id,
+          requestedBy: decidedBy,
+          status: 'pending',
+          reason: existing.reason,
+          decidedBy: null,
+          decidedAt: null
+        }
+      };
     });
   }
 

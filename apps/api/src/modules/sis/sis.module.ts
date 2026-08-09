@@ -4,6 +4,7 @@ import {
   ClassStreamsController,
   GuardiansController,
   StudentsController,
+  TransferRequestsController,
   TransfersController
 } from './sis.controller';
 import { SisRepository } from './sis.repository';
@@ -20,7 +21,8 @@ import { SisService } from './sis.service';
     ClassStreamsController,
     GuardiansController,
     StudentsController,
-    TransfersController
+    TransfersController,
+    TransferRequestsController
   ],
   providers: [SisRepository, SisService],
   exports: [SisRepository]
