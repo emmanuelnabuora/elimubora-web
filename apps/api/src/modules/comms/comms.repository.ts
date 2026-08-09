@@ -111,6 +111,102 @@ export class CommsRepository {
   }
 
   /**
+   * A single announcement by id -- for the detail view a notification
+   * email (or a click from the list) deep-links to. Does not itself
+   * enforce that the caller is actually in the announcement's target
+   * audience; the service layer does that, matching how every other
+   * per-role visibility rule in this module is enforced in application
+   * code rather than in this raw lookup.
+   */
+  async findById(id: string): Promise<Announcement | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<Row>(
+        `SELECT * FROM comms.announcements
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [id]
+      );
+      return rows[0] ? toAnnouncement(rows[0]) : null;
+    });
+  }
+
+  /**
+   * Every real contact (email + name) the announcement's targeting
+   * flags and grade level actually reach, for notification fan-out.
+   * Mirrors listForGradeLevels'/listAll's own targeting rules exactly
+   * -- gradeLevel null means whole-school, otherwise it must match --
+   * rather than re-deriving a second, potentially divergent notion of
+   * "who this announcement is for."
+   *
+   * Three distinct audiences, three distinct join paths -- run only
+   * the ones actually targeted, not a single query that computes all
+   * three and discards what wasn't asked for:
+   *   - students: via their active class allocation's stream grade
+   *   - parents: via a linked, portal-activated guardian of a student
+   *     in a matching class allocation (a guardian with no user_id has
+   *     no portal account yet and nothing to email)
+   *   - teachers: every teacher at the school, ungated by grade --
+   *     matching listAll's own "no single grade" rationale for staff
+   */
+  async getRecipientContacts(
+    tenantId: string,
+    gradeLevel: string | null,
+    targetStudents: boolean,
+    targetParents: boolean,
+    targetTeachers: boolean
+  ): Promise<Array<{ email: string; fullName: string; role: 'learner' | 'parent' | 'teacher' }>> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const results: Array<{ email: string; full_name: string; role: 'learner' | 'parent' | 'teacher' }> = [];
+
+      if (targetStudents) {
+        const { rows } = await client.query<{ email: string; full_name: string }>(
+          `SELECT DISTINCT u.email, u.full_name
+             FROM sis.class_allocations ca
+             JOIN sis.class_streams cs ON cs.id = ca.class_stream_id
+             JOIN core.users u ON u.id = ca.student_id
+            WHERE ca.tenant_id = core.current_tenant_id() AND ca.status = 'active' AND ca.deleted_at IS NULL
+              AND ($1::text IS NULL OR cs.grade_level = $1)`,
+          [gradeLevel]
+        );
+        results.push(...rows.map((r) => ({ ...r, role: 'learner' as const })));
+      }
+
+      if (targetParents) {
+        const { rows } = await client.query<{ email: string; full_name: string }>(
+          `SELECT DISTINCT u.email, u.full_name
+             FROM sis.student_guardians sg
+             JOIN sis.guardians g ON g.id = sg.guardian_id AND g.user_id IS NOT NULL
+             JOIN core.users u ON u.id = g.user_id
+             JOIN sis.class_allocations ca ON ca.student_id = sg.student_id AND ca.status = 'active' AND ca.deleted_at IS NULL
+             JOIN sis.class_streams cs ON cs.id = ca.class_stream_id
+            WHERE sg.tenant_id = core.current_tenant_id() AND sg.deleted_at IS NULL
+              AND ($1::text IS NULL OR cs.grade_level = $1)`,
+          [gradeLevel]
+        );
+        results.push(...rows.map((r) => ({ ...r, role: 'parent' as const })));
+      }
+
+      if (targetTeachers) {
+        const { rows } = await client.query<{ email: string; full_name: string }>(
+          `SELECT DISTINCT u.email, u.full_name
+             FROM core.memberships m
+             JOIN core.users u ON u.id = m.user_id
+            WHERE m.tenant_id = core.current_tenant_id() AND m.role = 'teacher' AND m.deleted_at IS NULL`
+        );
+        results.push(...rows.map((r) => ({ ...r, role: 'teacher' as const })));
+      }
+
+      // A person can legitimately appear more than once (e.g. a
+      // guardian of two children in the same class, or a teacher who
+      // is also a parent) -- dedupe on email so they get exactly one
+      // notification per announcement, not one per matching row.
+      const seen = new Set<string>();
+      return results
+        .filter((r) => (seen.has(r.email) ? false : (seen.add(r.email), true)))
+        .map((r) => ({ email: r.email, fullName: r.full_name, role: r.role }));
+    });
+  }
+
+  /**
    * Relevant to a student or a guardian: whole-school announcements
    * plus those targeted at their (or their child's) grade -- and,
    * with audience targeting, only the ones actually meant for that

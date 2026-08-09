@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { ComposeAnnouncementForm } from '../../../components/ComposeAnnouncementForm';
 
@@ -42,7 +43,9 @@ export default async function AdminAnnouncementsPage() {
               <div key={a.id} className="admin-section" style={{ margin: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <h3 className="admin-section-title" style={{ marginBottom: 4 }}>
-                    {a.title}
+                    <Link href={`/admin/announcements/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                      {a.title}
+                    </Link>
                   </h3>
                   <span style={{ fontSize: 12, color: 'var(--eb-fg-muted)' }}>
                     {new Date(a.createdAt).toLocaleDateString()}

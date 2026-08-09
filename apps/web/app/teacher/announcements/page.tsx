@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 
 interface Announcement {
@@ -23,7 +24,9 @@ export default async function TeacherAnnouncementsPage() {
             <div key={a.id} className="admin-section" style={{ margin: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <h2 className="admin-section-title" style={{ marginBottom: 4 }}>
-                  {a.title}
+                  <Link href={`/teacher/announcements/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                    {a.title}
+                  </Link>
                 </h2>
                 <span style={{ fontSize: 12, color: 'var(--eb-fg-muted)' }}>
                   {new Date(a.createdAt).toLocaleDateString()}

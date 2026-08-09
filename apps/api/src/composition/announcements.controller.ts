@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, NotFoundException, Param, ParseUUIDPipe } from '@nestjs/common';
 import { CurrentUser } from '../core/auth/decorators';
 import type { AuthenticatedUser } from '../core/auth/auth.types';
 import { CommsRepository } from '../modules/comms/comms.repository';
@@ -43,5 +43,45 @@ export class AnnouncementsReadController {
     // whole-school-only view, neither of which is better than the
     // endpoint they already use.
     return [];
+  }
+
+  /**
+   * The detail view a notification email (or a click from any list)
+   * deep-links to. Reuses this controller's existing role split
+   * rather than introducing a second one: staff can view anything at
+   * their school regardless of targeting (the same oversight already
+   * implicit in listAll not being grade-filtered); a learner or
+   * parent only if the announcement's grade and audience targeting
+   * actually reaches them — checked against the same SIS-derived
+   * grade level(s) their own list view already uses, not a separate,
+   * potentially divergent notion of "can they see this."
+   */
+  @Get(':id')
+  async getOne(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    const announcement = await this.comms.findById(id);
+    if (!announcement) throw new NotFoundException('Announcement not found');
+
+    if (STAFF_ROLES.has(user.role)) return announcement;
+
+    if (user.role === 'learner') {
+      const profile = await this.sis.getMyProfile(user.userId);
+      const matchesGrade = !announcement.gradeLevel || announcement.gradeLevel === profile?.gradeLevel;
+      if (announcement.targetStudents && matchesGrade) return announcement;
+      throw new ForbiddenException('This announcement is not visible to you');
+    }
+
+    if (user.role === 'parent') {
+      const children = await this.sis.listChildrenForGuardianUser(user.userId);
+      const gradeLevels = new Set<string>();
+      for (const child of children) {
+        const level = await this.sis.getCurrentGradeLevel(child.studentId);
+        if (level) gradeLevels.add(level);
+      }
+      const matchesGrade = !announcement.gradeLevel || gradeLevels.has(announcement.gradeLevel);
+      if (announcement.targetParents && matchesGrade) return announcement;
+      throw new ForbiddenException('This announcement is not visible to you');
+    }
+
+    throw new ForbiddenException('This announcement is not visible to you');
   }
 }

@@ -74,6 +74,15 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
       htmlBody: `<p><strong>${senderName}</strong> sent you a new message on ElimuBora.</p><p><a href="${messagesUrl}">Read and reply</a></p>`
     };
   }
+  if (message.template === 'new-announcement') {
+    const title = String(message.data.title ?? 'New announcement');
+    const announcementUrl = String(message.data.announcementUrl ?? '');
+    return {
+      subject: `New announcement: ${title}`,
+      textBody: `A new announcement was posted on ElimuBora: "${title}"\n\nView it:\n${announcementUrl}`,
+      htmlBody: `<p>A new announcement was posted on ElimuBora:</p><p><strong>${title}</strong></p><p><a href="${announcementUrl}">View announcement</a></p>`
+    };
+  }
   return {
     subject: 'ElimuBora notification',
     textBody: JSON.stringify(message.data),

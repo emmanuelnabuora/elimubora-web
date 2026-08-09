@@ -57,7 +57,66 @@ export class CommsService {
     if (!STAFF_ROLES.has(user.role)) {
       throw new ForbiddenException('Only staff can post announcements');
     }
-    return this.repo.create({ ...dto, createdBy: user.userId });
+    const announcement = await this.repo.create({ ...dto, createdBy: user.userId });
+    await this.notifyAnnouncementRecipients(announcement, user.tenantId);
+    return announcement;
+  }
+
+  /**
+   * The same gap as direct messages, at a different scale: an
+   * announcement could previously only ever be discovered by
+   * independently opening the announcements list. Fans out in
+   * parallel (Promise.allSettled, not a sequential loop) since a
+   * school-wide announcement can reach a genuinely large number of
+   * people at once, and one recipient's delivery failure must never
+   * block or fail the rest -- allSettled specifically so a handful of
+   * bad addresses can't take the whole batch down, unlike a
+   * Promise.all that rejects on the first failure.
+   *
+   * Deliberately mirrors notifyRecipient's other two choices too:
+   * shadow (unactivated) accounts are filtered out before ever
+   * attempting delivery, and any failure here is logged, never
+   * allowed to fail the announcement-creation request itself -- the
+   * announcement is already saved and already visible in-app by the
+   * time this runs.
+   */
+  private async notifyAnnouncementRecipients(announcement: Announcement, tenantId: string): Promise<void> {
+    try {
+      const recipients = await this.repo.getRecipientContacts(
+        tenantId,
+        announcement.gradeLevel,
+        announcement.targetStudents,
+        announcement.targetParents,
+        announcement.targetTeachers
+      );
+      const roleToBasePath: Record<'learner' | 'parent' | 'teacher', string> = {
+        learner: '/student',
+        parent: '/parent',
+        teacher: '/teacher'
+      };
+      const results = await Promise.allSettled(
+        recipients
+          .filter((r) => !r.email.endsWith('@no-login.elimubora.internal'))
+          .map((r) =>
+            this.notifications.deliver({
+              to: { email: r.email },
+              template: 'new-announcement',
+              data: {
+                title: announcement.title,
+                announcementUrl: `${this.config.publicWebUrl}${roleToBasePath[r.role]}/announcements/${announcement.id}`
+              }
+            })
+          )
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        // eslint-disable-next-line no-console
+        console.error(`CommsService: ${failed}/${results.length} new-announcement notifications failed`);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('CommsService: new-announcement notification fan-out failed', err);
+    }
   }
 
   /** Only a teacher or admin can start a new conversation with a student — a student can reply once one exists, but can't cold-message an arbitrary staff member. */
