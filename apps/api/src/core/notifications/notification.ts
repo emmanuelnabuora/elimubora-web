@@ -65,6 +65,15 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
       htmlBody: `<p>A password reset was requested for your ElimuBora account.</p><p><a href="${resetUrl}">Reset your password</a></p><p style="color:#666;font-size:13px">If you didn't request this, you can safely ignore this email \u2014 your password won't change.</p>`
     };
   }
+  if (message.template === 'new-message') {
+    const senderName = String(message.data.senderName ?? 'Someone');
+    const messagesUrl = String(message.data.messagesUrl ?? '');
+    return {
+      subject: `New message from ${senderName} on ElimuBora`,
+      textBody: `${senderName} sent you a new message on ElimuBora.\n\nRead and reply:\n${messagesUrl}`,
+      htmlBody: `<p><strong>${senderName}</strong> sent you a new message on ElimuBora.</p><p><a href="${messagesUrl}">Read and reply</a></p>`
+    };
+  }
   return {
     subject: 'ElimuBora notification',
     textBody: JSON.stringify(message.data),

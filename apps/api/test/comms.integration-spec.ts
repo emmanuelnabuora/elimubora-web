@@ -4,6 +4,7 @@ import { Client } from 'pg';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { APP_CONFIG, type AppConfig } from '../src/config/configuration';
+import { NOTIFICATION_CHANNEL, type NotificationMessage } from '../src/core/notifications/notification';
 
 const appUrl = process.env.INTEGRATION_DATABASE_URL;
 const adminUrl = process.env.INTEGRATION_ADMIN_DATABASE_URL ?? appUrl;
@@ -26,6 +27,13 @@ d('Direct messaging (integration)', () => {
   let learnerToken: string;
   let secondLearnerToken: string;
   let learnerId: string;
+
+  const deliveredNotifications: NotificationMessage[] = [];
+  const spyNotificationChannel = {
+    deliver: async (message: NotificationMessage) => {
+      deliveredNotifications.push(message);
+    }
+  };
 
   const config: AppConfig = {
     nodeEnv: 'test',
@@ -65,6 +73,8 @@ d('Direct messaging (integration)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(APP_CONFIG)
       .useValue(config)
+      .overrideProvider(NOTIFICATION_CHANNEL)
+      .useValue(spyNotificationChannel)
       .compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('v1', { exclude: ['health'] });
@@ -114,6 +124,14 @@ d('Direct messaging (integration)', () => {
     conversationId = start.body.conversation.id;
     expect(start.body.message.body).toBe('Please see me after class about your assignment.');
 
+    // The actual bug this closes: the student had no way to know a
+    // message arrived except independently checking their own inbox.
+    // Confirm the notification fired, to the student, without the
+    // message content itself in the email body.
+    const toStudent = deliveredNotifications.find((n) => n.to.email === learnerEmail && n.template === 'new-message');
+    expect(toStudent).toBeDefined();
+    expect(JSON.stringify(toStudent!.data)).not.toContain('Please see me after class');
+
     const studentList = await request(app.getHttpServer())
       .get('/v1/conversations')
       .set('authorization', `Bearer ${learnerToken}`)
@@ -130,6 +148,10 @@ d('Direct messaging (integration)', () => {
       .expect(201);
     expect(reply.body.senderId).toBe(learnerId);
 
+    // The reply direction notifies the teacher, not the student who just sent it.
+    const toTeacher = deliveredNotifications.find((n) => n.to.email === teacherEmail && n.template === 'new-message');
+    expect(toTeacher).toBeDefined();
+
     const messages = await request(app.getHttpServer())
       .get(`/v1/conversations/${conversationId}/messages`)
       .set('authorization', `Bearer ${teacherToken}`)
@@ -137,6 +159,30 @@ d('Direct messaging (integration)', () => {
     expect(messages.body).toHaveLength(2);
     expect(messages.body[0].body).toBe('Please see me after class about your assignment.');
     expect(messages.body[1].body).toBe('Okay, I will be there.');
+  });
+
+  it('messaging a student whose account is still an unactivated shadow does not attempt to email the internal placeholder address, but the message still sends', async () => {
+    const shadowEmail = `shadow.notif-test-${stamp}@no-login.elimubora.internal`;
+    await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({ email: shadowEmail, fullName: 'Unactivated Student', password, tenantId, role: 'learner' })
+      .expect(201);
+    const shadowRow = await db.query(`SELECT id FROM core.users WHERE email = $1`, [shadowEmail]);
+    const shadowStudentId = shadowRow.rows[0].id;
+
+    const beforeCount = deliveredNotifications.length;
+    await request(app.getHttpServer())
+      .post('/v1/conversations')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ studentId: shadowStudentId, body: 'A message to an unactivated account.' })
+      .expect(201);
+
+    // The message itself must still succeed (already asserted via
+    // .expect(201) above) -- only the notification attempt is
+    // skipped, since shadow.*@no-login.elimubora.internal isn't a
+    // real, deliverable address at all.
+    expect(deliveredNotifications.length).toBe(beforeCount);
+    expect(deliveredNotifications.some((n) => n.to.email === shadowEmail)).toBe(false);
   });
 
   it('sending to the same student again continues the existing conversation rather than creating a duplicate', async () => {

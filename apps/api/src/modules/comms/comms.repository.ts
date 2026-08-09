@@ -66,6 +66,22 @@ export class CommsRepository {
     private readonly audit: AuditService
   ) {}
 
+  /**
+   * A message recipient's email and name, for notifying them a new
+   * message arrived. core.users' RLS allows any tenant member to see
+   * this for another member of the same tenant, which the sender and
+   * recipient of an in-school conversation always are.
+   */
+  async getUserContact(userId: string): Promise<{ email: string; fullName: string } | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ email: string; full_name: string }>(
+        `SELECT email, full_name FROM core.users WHERE id = $1`,
+        [userId]
+      );
+      return rows[0] ? { email: rows[0].email, fullName: rows[0].full_name } : null;
+    });
+  }
+
   async create(input: {
     title: string;
     body: string;
