@@ -51,10 +51,15 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
   if (message.template === 'invitation') {
     const acceptUrl = String(message.data.acceptUrl ?? '');
     const role = String(message.data.role ?? 'a role');
+    const studentName = message.data.studentName ? String(message.data.studentName) : null;
+    const contextHtml = studentName
+      ? `to join ElimuBora as a parent, linked to <strong>${studentName}</strong>'s profile`
+      : `to join ElimuBora as ${role}`;
+    const contextText = studentName ? `to join ElimuBora as a parent, linked to ${studentName}'s profile` : `to join ElimuBora as ${role}`;
     return {
       subject: 'You\u2019ve been invited to ElimuBora',
-      textBody: `You've been invited to join ElimuBora as ${role}.\n\nAccept your invitation:\n${acceptUrl}\n\nIf you weren't expecting this, you can safely ignore this email.`,
-      htmlBody: `<p>You've been invited to join <strong>ElimuBora</strong> as <strong>${role}</strong>.</p><p><a href="${acceptUrl}">Accept your invitation</a></p><p style="color:#666;font-size:13px">If you weren't expecting this, you can safely ignore this email.</p>`
+      textBody: `You've been invited ${contextText}.\n\nAccept your invitation:\n${acceptUrl}\n\nIf you weren't expecting this, you can safely ignore this email.`,
+      htmlBody: `<p>You've been invited ${contextHtml}.</p><p><a href="${acceptUrl}">Accept your invitation</a></p><p style="color:#666;font-size:13px">If you weren't expecting this, you can safely ignore this email.</p>`
     };
   }
   if (message.template === 'password-reset') {

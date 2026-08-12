@@ -30,7 +30,7 @@ import { UsersService } from './users.service';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard }
   ],
-  exports: [TokenService]
+  exports: [TokenService, UsersService]
 })
 export class IdentityModule {}
 

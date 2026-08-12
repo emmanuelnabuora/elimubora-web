@@ -143,6 +143,98 @@ export class SisRepository {
     });
   }
 
+  /**
+   * The guardian-linking half of accepting a guardian invitation --
+   * called from the composition layer's accept endpoint, which runs
+   * pre-authentication (no JWT yet, so no ambient tenant context the
+   * usual withTenantTransaction-based methods above rely on). Takes
+   * an explicit tenantId and actorId instead, matching the same
+   * pattern used for convertTransferRequest earlier this session.
+   *
+   * Reuses an existing sis.guardians row for this exact user_id if
+   * one is already there -- a parent with two children at the same
+   * school accepting a second invitation should end up as one
+   * guardian record linked to two students, not two separate,
+   * duplicate guardian records for the same actual person.
+   *
+   * permissions and isEmergencyContact persist onto the relationship
+   * itself (sis.student_guardians), not the guardian identity -- the
+   * same person can reasonably have different permissions or
+   * emergency-contact status for different children.
+   */
+  private static readonly DEFAULT_GUARDIAN_PERMISSIONS = {
+    view_academics: true,
+    view_attendance: true,
+    receive_announcements: true,
+    view_finance: true,
+    pay_fees: true,
+    authorize_student_changes: false
+  };
+
+  async linkGuardianFromInvitation(input: {
+    tenantId: string;
+    userId: string;
+    studentId: string;
+    fullName: string;
+    email: string;
+    relationship: string;
+    isPrimary: boolean;
+    canPickup: boolean;
+    isEmergencyContact: boolean;
+    permissions: Record<string, boolean> | null;
+  }): Promise<void> {
+    return this.db.withContext({ tenantId: input.tenantId, actorId: input.userId }, async (client) => {
+      const existing = await client.query<{ id: string }>(
+        `SELECT id FROM sis.guardians
+          WHERE tenant_id = core.current_tenant_id() AND user_id = $1 AND deleted_at IS NULL`,
+        [input.userId]
+      );
+      let guardianId = existing.rows[0]?.id;
+      if (!guardianId) {
+        guardianId = randomUUID();
+        await client.query(
+          `INSERT INTO sis.guardians (id, tenant_id, full_name, email, user_id)
+           VALUES ($1, core.current_tenant_id(), $2, $3, $4)`,
+          [guardianId, input.fullName, input.email, input.userId]
+        );
+        await this.audit.record(client, {
+          action: 'guardian.created_from_invitation',
+          entityType: 'guardian',
+          entityId: guardianId,
+          after: { userId: input.userId }
+        });
+      }
+      const linkId = randomUUID();
+      const permissionsJson = JSON.stringify({
+        ...SisRepository.DEFAULT_GUARDIAN_PERMISSIONS,
+        ...(input.permissions ?? {})
+      });
+      await client.query(
+        `INSERT INTO sis.student_guardians
+           (id, tenant_id, student_id, guardian_id, relationship, is_primary, can_pickup,
+            is_emergency_contact, permissions)
+         VALUES ($1, core.current_tenant_id(), $2, $3, $4, $5, $6, $7, $8::jsonb)
+         ON CONFLICT (student_id, guardian_id) DO NOTHING`,
+        [
+          linkId,
+          input.studentId,
+          guardianId,
+          input.relationship,
+          input.isPrimary,
+          input.canPickup,
+          input.isEmergencyContact,
+          permissionsJson
+        ]
+      );
+      await this.audit.record(client, {
+        action: 'guardian.linked_from_invitation',
+        entityType: 'student_guardian',
+        entityId: input.studentId,
+        after: { guardianId, relationship: input.relationship }
+      });
+    });
+  }
+
   async isGuardianOf(userId: string, studentId: string): Promise<boolean> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query(
@@ -279,6 +371,19 @@ export class SisRepository {
         enrolledAt: new Date().toISOString(),
         photoDataUrl: null
       };
+    });
+  }
+
+  /** A student's own display name, for contexts (like a guardian invitation email) that need to say which child something is about, without pulling in the full profile. */
+  async getStudentName(studentId: string): Promise<string | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ full_name: string }>(
+        `SELECT u.full_name FROM core.users u
+           JOIN sis.student_profiles sp ON sp.student_id = u.id
+          WHERE u.id = $1 AND sp.tenant_id = core.current_tenant_id() AND sp.deleted_at IS NULL`,
+        [studentId]
+      );
+      return rows[0]?.full_name ?? null;
     });
   }
 

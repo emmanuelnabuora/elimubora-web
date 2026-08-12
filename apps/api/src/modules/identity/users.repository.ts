@@ -11,6 +11,12 @@ export interface InvitationRecord {
   expiresAt: Date;
   acceptedAt: Date | null;
   revokedAt: Date | null;
+  studentId: string | null;
+  relationship: string | null;
+  isPrimary: boolean | null;
+  canPickup: boolean | null;
+  isEmergencyContact: boolean | null;
+  permissions: Record<string, boolean> | null;
 }
 
 export interface TenantUserRow {
@@ -39,13 +45,34 @@ export class UsersRepository {
     invitedBy: string;
     tokenHash: string;
     ttlDays: number;
+    studentId?: string;
+    relationship?: string;
+    isPrimary?: boolean;
+    canPickup?: boolean;
+    isEmergencyContact?: boolean;
+    permissions?: Record<string, boolean>;
   }): Promise<string> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO core.invitations (tenant_id, email, role, invited_by, token_hash, expires_at)
-         VALUES (core.current_tenant_id(), $1, $2, $3, $4, now() + make_interval(days => $5))
+        `INSERT INTO core.invitations
+           (tenant_id, email, role, invited_by, token_hash, expires_at,
+            student_id, relationship, is_primary, can_pickup, is_emergency_contact, permissions)
+         VALUES (core.current_tenant_id(), $1, $2, $3, $4, now() + make_interval(days => $5),
+                 $6, $7, $8, $9, $10, $11)
          RETURNING id`,
-        [input.email, input.role, input.invitedBy, input.tokenHash, input.ttlDays]
+        [
+          input.email,
+          input.role,
+          input.invitedBy,
+          input.tokenHash,
+          input.ttlDays,
+          input.studentId ?? null,
+          input.relationship ?? null,
+          input.isPrimary ?? null,
+          input.canPickup ?? null,
+          input.isEmergencyContact ?? null,
+          input.permissions ? JSON.stringify(input.permissions) : null
+        ]
       );
       const id = rows[0]!.id;
       await client.query(
@@ -58,31 +85,48 @@ export class UsersRepository {
     });
   }
 
+  private mapInvitationRow(r: {
+    id: string;
+    tenant_id: string;
+    email: string;
+    role: MembershipRole;
+    expires_at: Date;
+    accepted_at: Date | null;
+    revoked_at: Date | null;
+    student_id: string | null;
+    relationship: string | null;
+    is_primary: boolean | null;
+    can_pickup: boolean | null;
+    is_emergency_contact: boolean | null;
+    permissions: Record<string, boolean> | null;
+  }): InvitationRecord {
+    return {
+      id: r.id,
+      tenantId: r.tenant_id,
+      email: r.email,
+      role: r.role,
+      expiresAt: r.expires_at,
+      acceptedAt: r.accepted_at,
+      revokedAt: r.revoked_at,
+      studentId: r.student_id,
+      relationship: r.relationship,
+      isPrimary: r.is_primary,
+      canPickup: r.can_pickup,
+      isEmergencyContact: r.is_emergency_contact,
+      permissions: r.permissions
+    };
+  }
+
   async listInvitations(): Promise<InvitationRecord[]> {
     return this.db.withTenantTransaction(async (client) => {
-      const { rows } = await client.query<{
-        id: string;
-        tenant_id: string;
-        email: string;
-        role: MembershipRole;
-        expires_at: Date;
-        accepted_at: Date | null;
-        revoked_at: Date | null;
-      }>(
-        `SELECT id, tenant_id, email, role, expires_at, accepted_at, revoked_at
+      const { rows } = await client.query<Parameters<typeof this.mapInvitationRow>[0]>(
+        `SELECT id, tenant_id, email, role, expires_at, accepted_at, revoked_at,
+                student_id, relationship, is_primary, can_pickup, is_emergency_contact, permissions
            FROM core.invitations
           WHERE accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
           ORDER BY created_at DESC`
       );
-      return rows.map((r) => ({
-        id: r.id,
-        tenantId: r.tenant_id,
-        email: r.email,
-        role: r.role,
-        expiresAt: r.expires_at,
-        acceptedAt: r.accepted_at,
-        revokedAt: r.revoked_at
-      }));
+      return rows.map((r) => this.mapInvitationRow(r));
     });
   }
 
@@ -105,29 +149,71 @@ export class UsersRepository {
     });
   }
 
+  /**
+   * The invitee's own decline, not staff revocation -- reuses the
+   * same revoked_at column (functionally, both mean "this invitation
+   * can no longer be accepted") rather than a new column, but logs a
+   * distinct audit action so who/why is still recoverable from
+   * history. Runs pre-authentication (whoever is declining a
+   * guardian invite hasn't necessarily created an account or logged
+   * in at all), so takes an explicit tenantId rather than relying on
+   * withTenantTransaction's ambient context -- the caller already has
+   * this from looking the invitation up by token first.
+   */
+  async declineInvitation(tenantId: string, id: string): Promise<boolean> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const res = await client.query(
+        `UPDATE core.invitations SET revoked_at = now()
+          WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL`,
+        [id]
+      );
+      if (res.rowCount === 1) {
+        await client.query(
+          `INSERT INTO core.audit_log (tenant_id, action, entity_type, entity_id)
+           VALUES ($2, 'invitation.declined', 'invitation', $1)`,
+          [id, tenantId]
+        );
+      }
+      return res.rowCount === 1;
+    });
+  }
+
+  /**
+   * Regenerates a pending invitation's token and resets its expiry --
+   * generic, not guardian-specific, since a bounced email or an
+   * expired link is a broadly useful thing to recover from for any
+   * invitation kind, not just a guardian one. Returns the new raw
+   * token so the caller can send a fresh accept link; only its hash
+   * is ever persisted.
+   */
+  async resendInvitation(id: string, newTokenHash: string, ttlDays: number): Promise<boolean> {
+    return this.db.withTenantTransaction(async (client) => {
+      const res = await client.query(
+        `UPDATE core.invitations
+            SET token_hash = $2, expires_at = now() + make_interval(days => $3)
+          WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()`,
+        [id, newTokenHash, ttlDays]
+      );
+      if (res.rowCount === 1) {
+        await client.query(
+          `INSERT INTO core.audit_log (tenant_id, actor_id, action, entity_type, entity_id)
+           VALUES (core.current_tenant_id(), core.current_actor_id(),
+                   'invitation.resent', 'invitation', $1)`,
+          [id]
+        );
+      }
+      return res.rowCount === 1;
+    });
+  }
+
   /** Pre-auth lookup via SECURITY DEFINER (the acceptor has no session). */
   async findInvitationByTokenHash(tokenHash: string): Promise<InvitationRecord | null> {
-    const { rows } = await this.db.query<{
-      id: string;
-      tenant_id: string;
-      email: string;
-      role: MembershipRole;
-      expires_at: Date;
-      accepted_at: Date | null;
-      revoked_at: Date | null;
-    }>('SELECT * FROM core.auth_lookup_invitation($1)', [tokenHash]);
+    const { rows } = await this.db.query<Parameters<typeof this.mapInvitationRow>[0]>(
+      'SELECT * FROM core.auth_lookup_invitation($1)',
+      [tokenHash]
+    );
     const r = rows[0];
-    return r
-      ? {
-          id: r.id,
-          tenantId: r.tenant_id,
-          email: r.email,
-          role: r.role,
-          expiresAt: r.expires_at,
-          acceptedAt: r.accepted_at,
-          revokedAt: r.revoked_at
-        }
-      : null;
+    return r ? this.mapInvitationRow(r) : null;
   }
 
   /**

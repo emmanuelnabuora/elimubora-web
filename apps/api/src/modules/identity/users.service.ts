@@ -45,20 +45,36 @@ export class UsersService {
     email: string;
     role: MembershipRole;
     invitedBy: string;
+    studentId?: string;
+    studentName?: string;
+    relationship?: string;
+    isPrimary?: boolean;
+    canPickup?: boolean;
+    isEmergencyContact?: boolean;
+    permissions?: Record<string, boolean>;
   }): Promise<{ id: string; acceptUrl?: string }> {
+    if (input.studentId && input.role !== 'parent') {
+      throw new BadRequestException('Only a parent invitation can be linked to a student');
+    }
     const token = randomBytes(32).toString('base64url');
     const id = await this.users.createInvitation({
       email: input.email.trim().toLowerCase(),
       role: input.role,
       invitedBy: input.invitedBy,
       tokenHash: TokenService.hashRefreshToken(token),
-      ttlDays: this.config.auth.invitationTtlDays
+      ttlDays: this.config.auth.invitationTtlDays,
+      studentId: input.studentId,
+      relationship: input.relationship,
+      isPrimary: input.isPrimary,
+      canPickup: input.canPickup,
+      isEmergencyContact: input.isEmergencyContact,
+      permissions: input.permissions
     });
     const acceptUrl = `${this.config.publicWebUrl}/invitations/accept?token=${token}`;
     await this.notifications.deliver({
       to: { email: input.email },
       template: 'invitation',
-      data: { acceptUrl, role: input.role }
+      data: { acceptUrl, role: input.role, studentName: input.studentName }
     });
     return this.config.nodeEnv === 'production' ? { id } : { id, acceptUrl };
   }
@@ -72,11 +88,46 @@ export class UsersService {
     if (!ok) throw new NotFoundException('Invitation not found or already resolved');
   }
 
+  /** Regenerates a pending invitation's token, for a bounced email or an expired link — not guardian-specific, useful for any invitation kind. */
+  async resendInvitation(id: string): Promise<{ id: string; acceptUrl?: string }> {
+    const token = randomBytes(32).toString('base64url');
+    const ok = await this.users.resendInvitation(id, TokenService.hashRefreshToken(token), this.config.auth.invitationTtlDays);
+    if (!ok) throw new NotFoundException('Invitation not found, already resolved, or already expired');
+    const acceptUrl = `${this.config.publicWebUrl}/invitations/accept?token=${token}`;
+    return this.config.nodeEnv === 'production' ? { id } : { id, acceptUrl };
+  }
+
+  /** The invitee's own decline — no account needed, just a valid, still-pending token. */
+  async declineInvitation(token: string): Promise<void> {
+    const invitation = await this.users.findInvitationByTokenHash(TokenService.hashRefreshToken(token));
+    if (
+      !invitation ||
+      invitation.acceptedAt ||
+      invitation.revokedAt ||
+      invitation.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException('Invitation is invalid or has expired');
+    }
+    await this.users.declineInvitation(invitation.tenantId, invitation.id);
+  }
+
   async acceptInvitation(input: {
     token: string;
     fullName?: string;
     password?: string;
-  }): Promise<{ userId: string; createdUser: boolean; tenantId: string }> {
+  }): Promise<{
+    userId: string;
+    createdUser: boolean;
+    tenantId: string;
+    email: string;
+    fullName: string;
+    studentId: string | null;
+    relationship: string | null;
+    isPrimary: boolean | null;
+    canPickup: boolean | null;
+    isEmergencyContact: boolean | null;
+    permissions: Record<string, boolean> | null;
+  }> {
     const invitation = await this.users.findInvitationByTokenHash(
       TokenService.hashRefreshToken(input.token)
     );
@@ -104,7 +155,18 @@ export class UsersService {
         fullName: input.fullName,
         passwordHash: input.password ? await this.passwords.hash(input.password) : undefined
       });
-      return { ...result, tenantId: invitation.tenantId };
+      return {
+        ...result,
+        tenantId: invitation.tenantId,
+        email: invitation.email,
+        fullName: existing?.fullName ?? input.fullName ?? '',
+        studentId: invitation.studentId,
+        relationship: invitation.relationship,
+        isPrimary: invitation.isPrimary,
+        canPickup: invitation.canPickup,
+        isEmergencyContact: invitation.isEmergencyContact,
+        permissions: invitation.permissions
+      };
     } catch (err) {
       if (err instanceof Error && err.message === 'INVITATION_NO_LONGER_VALID') {
         throw new ConflictException('Invitation was already used');

@@ -55,6 +55,11 @@ export class UsersController {
     await this.users.revokeInvitation(id);
   }
 
+  @Patch('invitations/:id/resend')
+  resendInvitation(@Param('id', ParseUUIDPipe) id: string) {
+    return this.users.resendInvitation(id);
+  }
+
   @Patch(':userId/membership')
   @HttpCode(204)
   async updateMembership(
