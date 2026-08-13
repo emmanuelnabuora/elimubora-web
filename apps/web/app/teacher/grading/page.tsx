@@ -1,6 +1,7 @@
 import { apiFetch } from '../../../lib/api-client';
-import { CourseAssignmentSelector } from './CourseAssignmentSelector';
+import { GradingSelector } from './GradingSelector';
 import { SubmissionsGrader } from './SubmissionsGrader';
+import { ExamAttemptsList } from './ExamAttemptsList';
 
 interface CourseSummary {
   courseId: string;
@@ -28,12 +29,28 @@ interface RosterEntry {
   fullName: string;
 }
 
+interface ExamSummary {
+  id: string;
+  courseId: string;
+  title: string;
+  status: string;
+}
+
+interface ExamAttemptSummary {
+  id: string;
+  learnerName: string | null;
+  status: string;
+  autoScore: string;
+  manualScore: string;
+  finalScore: string;
+}
+
 export default async function GradingPage({
   searchParams
 }: {
-  searchParams: Promise<{ courseId?: string; assignmentId?: string }>;
+  searchParams: Promise<{ courseId?: string; assignmentId?: string; examId?: string }>;
 }) {
-  const { courseId, assignmentId } = await searchParams;
+  const { courseId, assignmentId, examId } = await searchParams;
 
   const dashboard = await apiFetch<{ courses: CourseSummary[] }>('/v1/teacher/dashboard');
 
@@ -52,6 +69,14 @@ export default async function GradingPage({
     ? await apiFetch<Submission[]>(`/v1/assignments/${assignmentId}/submissions`)
     : [];
 
+  // listExams isn't course-scoped server-side (it returns every exam
+  // in the tenant), so the course filter happens here rather than
+  // adding a new backend endpoint for what's a simple client-side filter.
+  const allExams = courseId ? await apiFetch<ExamSummary[]>('/v1/exams') : [];
+  const exams = allExams.filter((e) => e.courseId === courseId);
+
+  const attempts = examId ? await apiFetch<ExamAttemptSummary[]>(`/v1/exams/${examId}/attempts`) : [];
+
   const selectedAssignment = assignments.find((a) => a.id === assignmentId);
   const studentName = (id: string) => roster.find((r) => r.userId === id)?.fullName ?? id;
 
@@ -60,11 +85,13 @@ export default async function GradingPage({
       <h1 className="admin-page-title">Grading</h1>
 
       <div className="admin-section">
-        <CourseAssignmentSelector
+        <GradingSelector
           courses={dashboard.courses}
           assignments={assignments}
+          exams={exams}
           selectedCourseId={courseId}
           selectedAssignmentId={assignmentId}
+          selectedExamId={examId}
         />
 
         {assignmentId && selectedAssignment && (
@@ -83,6 +110,12 @@ export default async function GradingPage({
                 }))}
               />
             )}
+          </div>
+        )}
+
+        {examId && (
+          <div style={{ marginTop: 'var(--eb-space-4)' }}>
+            <ExamAttemptsList attempts={attempts} />
           </div>
         )}
       </div>

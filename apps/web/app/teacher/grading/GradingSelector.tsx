@@ -12,16 +12,25 @@ interface Assignment {
   title: string;
 }
 
-export function CourseAssignmentSelector({
+interface ExamSummary {
+  id: string;
+  title: string;
+}
+
+export function GradingSelector({
   courses,
   assignments,
+  exams,
   selectedCourseId,
-  selectedAssignmentId
+  selectedAssignmentId,
+  selectedExamId
 }: {
   courses: CourseSummary[];
   assignments: Assignment[];
+  exams: ExamSummary[];
   selectedCourseId?: string;
   selectedAssignmentId?: string;
+  selectedExamId?: string;
 }) {
   const router = useRouter();
 
@@ -62,6 +71,29 @@ export function CourseAssignmentSelector({
             {assignments.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {selectedCourseId && (
+        <label className="admin-field">
+          <span>Exam</span>
+          <select
+            value={selectedExamId ?? ''}
+            onChange={(e) => {
+              const id = e.target.value;
+              router.push(
+                id
+                  ? `/teacher/grading?courseId=${selectedCourseId}&examId=${id}`
+                  : `/teacher/grading?courseId=${selectedCourseId}`
+              );
+            }}
+          >
+            <option value="">Select an exam…</option>
+            {exams.map((ex) => (
+              <option key={ex.id} value={ex.id}>
+                {ex.title}
               </option>
             ))}
           </select>
