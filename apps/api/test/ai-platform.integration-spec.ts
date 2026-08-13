@@ -18,9 +18,11 @@ d('AI Platform (integration)', () => {
   const password = 'A-genuinely-long-password-1';
   const teacherEmail = `ai-teacher-${stamp}@school.ke`;
   const learnerEmail = `ai-learner-${stamp}@school.ke`;
+  const adminEmail = `ai-admin-${stamp}@school.ke`;
 
   let teacherToken: string;
   let learnerToken: string;
+  let adminToken: string;
   let bankId: string;
   let courseId: string;
 
@@ -72,7 +74,8 @@ d('AI Platform (integration)', () => {
 
     for (const [email, role] of [
       [teacherEmail, 'teacher'],
-      [learnerEmail, 'learner']
+      [learnerEmail, 'learner'],
+      [adminEmail, 'school_admin']
     ] as const) {
       await request(app.getHttpServer())
         .post('/v1/auth/register')
@@ -81,6 +84,7 @@ d('AI Platform (integration)', () => {
     }
     teacherToken = await login(teacherEmail);
     learnerToken = await login(learnerEmail);
+    adminToken = await login(adminEmail);
 
     const course = await request(app.getHttpServer())
       .post('/v1/courses')
@@ -225,10 +229,29 @@ d('AI Platform (integration)', () => {
     expect(drafted.body.objectives).toContain('SANDBOX AI DRAFT');
 
     // The SAME approval endpoint from Sprint 6 advances it — no
-    // parallel AI-specific approval path exists.
-    const approved = await request(app.getHttpServer())
+    // parallel AI-specific approval path exists. The teacher submits
+    // their own draft for review...
+    await request(app.getHttpServer())
       .patch(`/v1/lesson-plans/${drafted.body.id}/status`)
       .set('authorization', `Bearer ${teacherToken}`)
+      .send({ status: 'submitted' })
+      .expect(200);
+
+    // ...but cannot approve it themselves — that gate is real now,
+    // not just a UI convention (Sprint 11: a teacher could previously
+    // submit and immediately self-approve through this exact
+    // endpoint, since the old code accepted any status from any
+    // staff role with no transition check at all).
+    await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${drafted.body.id}/status`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ status: 'approved' })
+      .expect(403);
+
+    // Only school administration can actually approve it.
+    const approved = await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${drafted.body.id}/status`)
+      .set('authorization', `Bearer ${adminToken}`)
       .send({ status: 'approved' })
       .expect(200);
     expect(approved.body.status).toBe('approved');

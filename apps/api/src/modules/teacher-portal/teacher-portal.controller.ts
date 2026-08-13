@@ -67,6 +67,11 @@ export class LessonPlansController {
     return this.service.listLessonPlans(courseId);
   }
 
+  @Get('pending')
+  listPending(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.listSubmittedLessonPlans(user);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @CurrentUser() user: AuthenticatedUser,

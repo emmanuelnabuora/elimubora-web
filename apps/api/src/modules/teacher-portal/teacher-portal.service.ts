@@ -7,6 +7,7 @@ import { TeacherPortalRepository } from './teacher-portal.repository';
 import type { AttendanceRecord, LessonPlan } from './teacher-portal.types';
 
 const STAFF_ROLES = new Set(['teacher', 'school_admin', 'principal', 'platform_admin']);
+const ADMIN_ROLES = new Set(['school_admin', 'principal', 'platform_admin']);
 
 /**
  * Authorization here is coarse-grained (any staff role may mark
@@ -27,6 +28,12 @@ export class TeacherPortalService {
   private requireStaff(user: AuthenticatedUser): void {
     if (!STAFF_ROLES.has(user.role)) {
       throw new ForbiddenException('Only teaching staff can perform this action');
+    }
+  }
+
+  private requireAdmin(user: AuthenticatedUser): void {
+    if (!ADMIN_ROLES.has(user.role)) {
+      throw new ForbiddenException('Only school administration can perform this action');
     }
   }
 
@@ -114,14 +121,47 @@ export class TeacherPortalService {
     return this.repo.listLessonPlansForCourse(courseId);
   }
 
+  /**
+   * draft -> submitted is the teacher's own action (submitting their
+   * work for review) -- any staff role can do it. submitted ->
+   * approved and submitted -> draft (sending it back for revision)
+   * are admin-only: this is the actual gate that was missing before
+   * -- a teacher could previously submit their own plan and then
+   * immediately approve it themselves through the exact same
+   * endpoint, since the old code accepted any status from any staff
+   * role with no transition check at all. draft -> approved directly
+   * (skipping review) is never allowed, for anyone.
+   */
   async updateLessonPlanStatus(
     user: AuthenticatedUser,
     id: string,
     status: LessonPlan['status']
   ): Promise<LessonPlan> {
     this.requireStaff(user);
-    const updated = await this.repo.updateLessonPlanStatus(id, status);
-    if (!updated) throw new NotFoundException('Lesson plan not found');
+    let expectedCurrentStatus: LessonPlan['status'];
+    if (status === 'submitted') {
+      expectedCurrentStatus = 'draft';
+    } else if (status === 'approved' || status === 'draft') {
+      this.requireAdmin(user);
+      expectedCurrentStatus = 'submitted';
+    } else {
+      throw new ForbiddenException('Unknown status');
+    }
+    const updated = await this.repo.updateLessonPlanStatus(id, status, expectedCurrentStatus);
+    if (!updated) {
+      throw new NotFoundException(
+        'Lesson plan not found, or not in the right state for this change'
+      );
+    }
     return updated;
   }
+
+  /** The admin review queue — every submitted plan across every course/teacher, awaiting approval. */
+  async listSubmittedLessonPlans(
+    user: AuthenticatedUser
+  ): Promise<Array<LessonPlan & { courseTitle: string; teacherName: string }>> {
+    this.requireAdmin(user);
+    return this.repo.listLessonPlansByStatus('submitted');
+  }
 }
+

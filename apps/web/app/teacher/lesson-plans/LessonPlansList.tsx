@@ -14,13 +14,12 @@ interface LessonPlan {
 
 const NEXT_STATUS: Record<string, string | null> = {
   draft: 'submitted',
-  submitted: 'approved',
+  submitted: null,
   approved: null
 };
 
 const ACTION_LABEL: Record<string, string> = {
-  draft: 'Submit for review',
-  submitted: 'Approve'
+  draft: 'Submit for review'
 };
 
 export function LessonPlansList({ plans }: { plans: LessonPlan[] }) {
@@ -89,6 +88,11 @@ export function LessonPlansList({ plans }: { plans: LessonPlan[] }) {
                   >
                     {pendingId === plan.id ? 'Updating…' : ACTION_LABEL[plan.status]}
                   </button>
+                )}
+                {plan.status === 'submitted' && (
+                  <p style={{ fontSize: 12, color: 'var(--eb-fg-muted)', marginTop: 10, marginBottom: 0 }}>
+                    Awaiting approval from school administration.
+                  </p>
                 )}
               </div>
             );

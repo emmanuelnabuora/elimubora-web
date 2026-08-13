@@ -188,6 +188,33 @@ export class TeacherPortalRepository {
     });
   }
 
+  async findLessonPlan(id: string): Promise<LessonPlan | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<LessonPlanRow>(
+        `SELECT * FROM teacherportal.lesson_plans
+          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL`,
+        [id]
+      );
+      return rows[0] ? toLessonPlan(rows[0]) : null;
+    });
+  }
+
+  /** For the admin review queue — spans every course/teacher, so joins in enough context (course title, teacher name) that an admin can tell what they're looking at without a separate lookup per row. */
+  async listLessonPlansByStatus(status: LessonPlan['status']): Promise<Array<LessonPlan & { courseTitle: string; teacherName: string }>> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<LessonPlanRow & { course_title: string; teacher_name: string }>(
+        `SELECT lp.*, c.title AS course_title, u.full_name AS teacher_name
+           FROM teacherportal.lesson_plans lp
+           JOIN learning.courses c ON c.id = lp.course_id
+           JOIN core.users u ON u.id = lp.teacher_id
+          WHERE lp.status = $1 AND lp.tenant_id = core.current_tenant_id() AND lp.deleted_at IS NULL
+          ORDER BY lp.week_of DESC`,
+        [status]
+      );
+      return rows.map((r) => ({ ...toLessonPlan(r), courseTitle: r.course_title, teacherName: r.teacher_name }));
+    });
+  }
+
   async listLessonPlansForCourse(courseId: string): Promise<LessonPlan[]> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<LessonPlanRow>(
@@ -200,13 +227,25 @@ export class TeacherPortalRepository {
     });
   }
 
-  async updateLessonPlanStatus(id: string, status: LessonPlan['status']): Promise<LessonPlan | null> {
+  /**
+   * expectedCurrentStatus is part of the WHERE clause, not a
+   * separate lookup-then-update — atomic, so a transition can't slip
+   * through under a race, and an illegal jump (draft straight to
+   * approved, skipping review) simply matches no row rather than
+   * needing separate validation code.
+   */
+  async updateLessonPlanStatus(
+    id: string,
+    status: LessonPlan['status'],
+    expectedCurrentStatus: LessonPlan['status']
+  ): Promise<LessonPlan | null> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<LessonPlanRow>(
         `UPDATE teacherportal.lesson_plans SET status = $2
-          WHERE id = $1 AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
+          WHERE id = $1 AND status = $3
+            AND tenant_id = core.current_tenant_id() AND deleted_at IS NULL
           RETURNING *`,
-        [id, status]
+        [id, status, expectedCurrentStatus]
       );
       if (!rows[0]) return null;
       await this.audit.record(client, {

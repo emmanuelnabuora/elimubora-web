@@ -207,7 +207,7 @@ d('Teacher Portal (integration)', () => {
     expect(current.body[0].status).toBe('late');
   });
 
-  it('creates and lists a lesson plan, then advances its status', async () => {
+  it('creates and lists a lesson plan, then advances through the full approval lifecycle', async () => {
     const plan = await request(app.getHttpServer())
       .post('/v1/lesson-plans')
       .set('authorization', `Bearer ${teacherToken}`)
@@ -226,12 +226,71 @@ d('Teacher Portal (integration)', () => {
       .expect(200);
     expect(list.body).toHaveLength(1);
 
+    // draft -> approved directly, skipping review, is never allowed for anyone.
+    await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${plan.body.id}/status`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ status: 'approved' })
+      .expect(404);
+
     const updated = await request(app.getHttpServer())
       .patch(`/v1/lesson-plans/${plan.body.id}/status`)
       .set('authorization', `Bearer ${teacherToken}`)
       .send({ status: 'submitted' })
       .expect(200);
     expect(updated.body.status).toBe('submitted');
+
+    // Shows up in the admin's cross-course review queue, with enough
+    // context (course/teacher) to know what it's looking at.
+    const pending = await request(app.getHttpServer())
+      .get('/v1/lesson-plans/pending')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const queued = pending.body.find((p: { id: string }) => p.id === plan.body.id);
+    expect(queued).toBeDefined();
+    expect(queued.courseTitle).toBeTruthy();
+    expect(queued.teacherName).toBeTruthy();
+
+    // A teacher — even the one who wrote it — cannot approve their own plan.
+    await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${plan.body.id}/status`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ status: 'approved' })
+      .expect(403);
+
+    // The pending queue itself is admin-only.
+    await request(app.getHttpServer())
+      .get('/v1/lesson-plans/pending')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(403);
+
+    // Admin sends it back for revision instead of approving.
+    const sentBack = await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${plan.body.id}/status`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ status: 'draft' })
+      .expect(200);
+    expect(sentBack.body.status).toBe('draft');
+
+    // Re-submit, then a real admin approval succeeds.
+    await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${plan.body.id}/status`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ status: 'submitted' })
+      .expect(200);
+    const approved = await request(app.getHttpServer())
+      .patch(`/v1/lesson-plans/${plan.body.id}/status`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ status: 'approved' })
+      .expect(200);
+    expect(approved.body.status).toBe('approved');
+
+    // Now approved, it no longer appears in the pending queue.
+    const pendingAfter = await request(app.getHttpServer())
+      .get('/v1/lesson-plans/pending')
+      .set('authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(pendingAfter.body.find((p: { id: string }) => p.id === plan.body.id)).toBeUndefined();
   });
 
   it('re-saving a lesson plan for the same course/teacher/week overwrites rather than duplicating', async () => {
