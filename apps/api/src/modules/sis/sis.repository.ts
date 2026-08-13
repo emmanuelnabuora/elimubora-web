@@ -387,6 +387,19 @@ export class SisRepository {
     });
   }
 
+  /** Same lookup as getStudentName, but with an explicit tenantId rather than relying on ambient context — needed for the pre-authentication invitation preview page, which has no session (and therefore no tenant context) at all. */
+  async getStudentNameWithContext(tenantId: string, studentId: string): Promise<string | null> {
+    return this.db.withContext({ tenantId }, async (client) => {
+      const { rows } = await client.query<{ full_name: string }>(
+        `SELECT u.full_name FROM core.users u
+           JOIN sis.student_profiles sp ON sp.student_id = u.id
+          WHERE u.id = $1 AND sp.tenant_id = core.current_tenant_id() AND sp.deleted_at IS NULL`,
+        [studentId]
+      );
+      return rows[0]?.full_name ?? null;
+    });
+  }
+
   async findStudentProfile(studentId: string): Promise<StudentProfile | null> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<{

@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { CurrentUser, Public, Roles } from '../core/auth/decorators';
 import type { AuthenticatedUser } from '../core/auth/auth.types';
 import { ZodValidationPipe } from '../core/http/zod-validation.pipe';
@@ -90,6 +90,16 @@ export class GuardianInvitationsController {
       });
     }
     return result;
+  }
+
+  @Public()
+  @Get('guardian-invitations/preview/:token')
+  async preview(@Param('token') token: string) {
+    const result = await this.users.previewInvitation(token);
+    const studentName = result.studentId
+      ? await this.sis.getStudentNameWithContext(result.tenantId, result.studentId)
+      : null;
+    return { role: result.role, studentName };
   }
 
   @Public()

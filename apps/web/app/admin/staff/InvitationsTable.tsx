@@ -14,6 +14,7 @@ export function InvitationsTable({ invitations }: { invitations: Invitation[] })
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState<string | null>(null);
 
   async function revoke(id: string) {
     setPendingId(id);
@@ -25,6 +26,26 @@ export function InvitationsTable({ invitations }: { invitations: Invitation[] })
         setError(data.message ?? 'Could not revoke that invitation. Try again.');
         return;
       }
+      router.refresh();
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function resend(id: string) {
+    setPendingId(id);
+    setError(null);
+    setResent(null);
+    try {
+      const res = await fetch(`/api/admin/invitations/${id}/resend`, { method: 'PATCH' });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message ?? 'Could not resend that invitation. It may have already expired or been used.');
+        return;
+      }
+      setResent(id);
       router.refresh();
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -51,7 +72,15 @@ export function InvitationsTable({ invitations }: { invitations: Invitation[] })
               <td>{inv.email}</td>
               <td style={{ textTransform: 'capitalize' }}>{inv.role.replace('_', ' ')}</td>
               <td>{new Date(inv.expiresAt).toLocaleDateString()}</td>
-              <td>
+              <td style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  disabled={pendingId === inv.id}
+                  onClick={() => resend(inv.id)}
+                >
+                  {resent === inv.id ? 'Sent!' : 'Resend'}
+                </button>
                 <button
                   type="button"
                   className="admin-btn-deny"

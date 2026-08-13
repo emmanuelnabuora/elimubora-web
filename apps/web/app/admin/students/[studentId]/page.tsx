@@ -3,6 +3,8 @@ import { apiFetch } from '../../../../lib/api-client';
 import { AddGuardianForm } from './AddGuardianForm';
 import { ActivateAccountForm } from './ActivateAccountForm';
 import { LinkGuardianAccountAction } from './LinkGuardianAccountAction';
+import { InviteGuardianForm } from './InviteGuardianForm';
+import { InvitationsTable } from '../../staff/InvitationsTable';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { EditStudentDetailsForm } from './EditStudentDetailsForm';
 import { RequestTransferForm } from '../../../../components/RequestTransferForm';
@@ -41,6 +43,14 @@ interface TenantUser {
   role: string;
 }
 
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  expiresAt: string;
+  studentId: string | null;
+}
+
 interface Certificate {
   id: string;
   title: string;
@@ -51,13 +61,15 @@ interface Certificate {
 export default async function StudentDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
 
-  const [students, profile, guardians, users, certificates] = await Promise.all([
+  const [students, profile, guardians, users, certificates, allInvitations] = await Promise.all([
     apiFetch<StudentListItem[]>('/v1/students'),
     apiFetch<StudentProfile>(`/v1/students/${studentId}`),
     apiFetch<Guardian[]>(`/v1/students/${studentId}/guardians`),
     apiFetch<TenantUser[]>('/v1/users?limit=100'),
-    apiFetch<Certificate[]>(`/v1/certificates/student/${studentId}`)
+    apiFetch<Certificate[]>(`/v1/certificates/student/${studentId}`),
+    apiFetch<Invitation[]>('/v1/users/invitations')
   ]);
+  const pendingGuardianInvitations = allInvitations.filter((i) => i.studentId === studentId);
 
   const student = students.find((s) => s.studentId === studentId);
   const parentAccounts = users.filter((u) => u.role === 'parent');
@@ -158,6 +170,18 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       <div className="admin-section">
         <h2 className="admin-section-title">Add a guardian</h2>
         <AddGuardianForm studentId={studentId} parentAccounts={parentAccounts} />
+      </div>
+
+      {pendingGuardianInvitations.length > 0 && (
+        <div className="admin-section">
+          <h2 className="admin-section-title">Pending guardian invitations ({pendingGuardianInvitations.length})</h2>
+          <InvitationsTable invitations={pendingGuardianInvitations} />
+        </div>
+      )}
+
+      <div className="admin-section">
+        <h2 className="admin-section-title">Invite a guardian</h2>
+        <InviteGuardianForm studentId={studentId} />
       </div>
     </div>
   );

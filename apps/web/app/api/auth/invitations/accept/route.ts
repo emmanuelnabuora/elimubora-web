@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '../../../../../lib/auth-cookies';
 
 /**
- * Proxies the public POST /v1/auth/invitations/accept directly --
+ * Proxies the public POST /v1/guardian-invitations/accept directly --
  * NOT through apiFetch, which requires an existing session and throws
  * 'Not signed in' immediately for exactly the unauthenticated,
  * brand-new visitor this route exists for. A real bug caught live:
@@ -10,6 +10,15 @@ import { API_BASE_URL } from '../../../../../lib/auth-cookies';
  * the API, but this route reported failure for every real user
  * because of that mismatch. Matches the same direct-fetch pattern the
  * login route already uses for the same reason.
+ *
+ * Points at guardian-invitations/accept, not the original
+ * auth/invitations/accept, because the former is a strict superset:
+ * it performs the exact same account creation/linking, then
+ * additionally links a guardian to a student when the invitation
+ * carries that metadata (a guardian invite) and does nothing extra
+ * otherwise (every other invite kind) -- so every accept flow can go
+ * through one endpoint rather than the frontend needing to guess
+ * which kind of invitation this is before choosing where to call.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   let body: unknown;
@@ -21,7 +30,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${API_BASE_URL}/v1/auth/invitations/accept`, {
+    upstream = await fetch(`${API_BASE_URL}/v1/guardian-invitations/accept`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body)

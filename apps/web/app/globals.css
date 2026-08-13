@@ -968,7 +968,7 @@ a { color: inherit; text-decoration: none; }
   gap: 8px;
 }
 
-.admin-btn-approve, .admin-btn-deny {
+.admin-btn-approve, .admin-btn-deny, .admin-btn-secondary {
   font-family: var(--eb-font-body);
   font-weight: 600;
   font-size: 13px;
@@ -981,7 +981,9 @@ a { color: inherit; text-decoration: none; }
 .admin-btn-approve { background: var(--sa-purple, var(--eb-primary)); color: #ffffff; }
 .admin-btn-approve:hover:not(:disabled) { background: var(--sa-purple-hover, var(--eb-primary)); }
 .admin-btn-deny { background: transparent; border: 1px solid var(--sa-red, var(--eb-danger)); color: var(--sa-red, var(--eb-danger)); }
-.admin-btn-approve:disabled, .admin-btn-deny:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-btn-secondary { background: transparent; border: 1px solid var(--eb-line); color: var(--eb-fg-muted); }
+.admin-btn-secondary:hover:not(:disabled) { background: var(--eb-bg-panel); }
+.admin-btn-approve:disabled, .admin-btn-deny:disabled, .admin-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .admin-empty {
   color: var(--eb-fg-muted);

@@ -111,6 +111,20 @@ export class UsersService {
     await this.users.declineInvitation(invitation.tenantId, invitation.id);
   }
 
+  /** Just enough context to show before someone commits to accepting — which role, and which child if this is a guardian invite. Same validation as accept's own lookup, but read-only. */
+  async previewInvitation(token: string): Promise<{ role: MembershipRole; studentId: string | null; tenantId: string }> {
+    const invitation = await this.users.findInvitationByTokenHash(TokenService.hashRefreshToken(token));
+    if (
+      !invitation ||
+      invitation.acceptedAt ||
+      invitation.revokedAt ||
+      invitation.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException('Invitation is invalid or has expired');
+    }
+    return { role: invitation.role, studentId: invitation.studentId, tenantId: invitation.tenantId };
+  }
+
   async acceptInvitation(input: {
     token: string;
     fullName?: string;
