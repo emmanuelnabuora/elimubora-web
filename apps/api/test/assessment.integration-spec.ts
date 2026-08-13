@@ -272,6 +272,33 @@ d('Assessment Platform (integration)', () => {
       .expect(404); // already submitted — no longer in_progress
   });
 
+  it('a learner cannot review someone else\'s attempt for grading; a teacher sees the full answer key, unlike the learner-facing view', async () => {
+    const list = await request(app.getHttpServer())
+      .get(`/v1/exams/${examId}/attempts`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const submittedAttempt = list.body.find((a: { status: string }) => a.status === 'submitted');
+    expect(submittedAttempt).toBeDefined();
+
+    await request(app.getHttpServer())
+      .get(`/v1/exam-attempts/${submittedAttempt.id}/review`)
+      .set('authorization', `Bearer ${learnerToken}`)
+      .expect(403);
+
+    const review = await request(app.getHttpServer())
+      .get(`/v1/exam-attempts/${submittedAttempt.id}/review`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    expect(review.body.attempt.id).toBe(submittedAttempt.id);
+    expect(review.body.attempt.learnerName).toBeTruthy();
+    expect(review.body.questions.length).toBeGreaterThan(0);
+    // Unlike GET .../questions (the learner-facing view), the answer
+    // key is present — a grader needs to see which MCQs were auto-marked
+    // right or wrong, not just which ones exist.
+    const mcqQuestion = review.body.questions.find((q: { questionType: string }) => q.questionType === 'mcq');
+    expect(mcqQuestion.correctOptionId).toBeTruthy();
+  });
+
   it('a learner cannot grade attempts (staff-only); grading finalizes the score', async () => {
     const list = await request(app.getHttpServer())
       .get(`/v1/exams/${examId}/attempts`)
@@ -293,6 +320,37 @@ d('Assessment Platform (integration)', () => {
       .expect(200);
     expect(graded.body.status).toBe('graded');
     expect(Number(graded.body.finalScore)).toBe(Number(submittedAttempt.autoScore) + 18);
+  });
+
+  it('the teacher dashboard combines assignment AND exam pending grading — the actual bug: it used to only ever count assignments', async () => {
+    await request(app.getHttpServer())
+      .post(`/v1/courses/${courseId}/enrollments`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ userId: (await db.query('SELECT id FROM core.users WHERE email = $1', [learner2Email])).rows[0].id, courseRole: 'learner' })
+      .expect(201);
+
+    const assignment = await request(app.getHttpServer())
+      .post(`/v1/courses/${courseId}/assignments`)
+      .set('authorization', `Bearer ${teacherToken}`)
+      .send({ title: 'Combined grading dashboard test', maxScore: 10 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/v1/assignments/${assignment.body.id}/submissions`)
+      .set('authorization', `Bearer ${learner2Token}`)
+      .send({ content: { text: 'My answer' } })
+      .expect(201);
+
+    const dashboard = await request(app.getHttpServer())
+      .get('/v1/teacher/dashboard')
+      .set('authorization', `Bearer ${teacherToken}`)
+      .expect(200);
+    const myCourse = dashboard.body.courses.find((c: { courseId: string }) => c.courseId === courseId);
+    expect(myCourse).toBeDefined();
+    expect(myCourse.pendingAssignmentGrading).toBeGreaterThanOrEqual(1);
+    // Structural correctness of the combination itself, independent
+    // of exactly how many exam attempts other tests in this file left
+    // pending at this point.
+    expect(myCourse.pendingGrading).toBe(myCourse.pendingAssignmentGrading + myCourse.pendingExamGrading);
   });
 
   it('GET /question-banks lists banks for staff — the only way to discover which banks already exist', async () => {

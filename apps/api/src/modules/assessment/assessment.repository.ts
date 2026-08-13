@@ -451,6 +451,44 @@ export class AssessmentRepository {
     });
   }
 
+  /** For the staff grading/review view — same attempt as findAttempt, plus who it belongs to, since a grader needs to know whose work they're looking at. */
+  async findAttemptWithLearnerName(id: string): Promise<(ExamAttempt & { learnerName: string | null }) | null> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<AttemptRow & { learner_name: string | null }>(
+        `SELECT ea.*, u.full_name AS learner_name
+           FROM assessment.exam_attempts ea
+           LEFT JOIN core.users u ON u.id = ea.learner_id
+          WHERE ea.id = $1 AND ea.tenant_id = core.current_tenant_id()`,
+        [id]
+      );
+      const r = rows[0];
+      return r ? { ...toAttempt(r), learnerName: r.learner_name } : null;
+    });
+  }
+
+  /**
+   * Exam-attempt counterpart to LearningRepository.countPendingGradingForCourse
+   * — deliberately a separate, parallel method rather than the
+   * learning module reaching into assessment.exam_attempts directly
+   * (or vice versa), matching the module-boundary pattern used
+   * throughout this codebase. The two counts are combined in the
+   * composition layer (TeacherDashboardController), the one place
+   * allowed to depend on both.
+   */
+  async countPendingGradingForCourse(courseId: string): Promise<number> {
+    return this.db.withTenantTransaction(async (client) => {
+      const { rows } = await client.query<{ n: string }>(
+        `SELECT count(*)::int AS n
+           FROM assessment.exam_attempts ea
+           JOIN assessment.exams e ON e.id = ea.exam_id
+          WHERE e.course_id = $1 AND ea.status = 'submitted'
+            AND ea.tenant_id = core.current_tenant_id()`,
+        [courseId]
+      );
+      return Number(rows[0]?.n ?? 0);
+    });
+  }
+
   async findAttemptByExamAndLearner(examId: string, learnerId: string): Promise<ExamAttempt | null> {
     return this.db.withTenantTransaction(async (client) => {
       const { rows } = await client.query<AttemptRow>(

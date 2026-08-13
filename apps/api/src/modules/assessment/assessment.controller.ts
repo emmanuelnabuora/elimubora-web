@@ -130,6 +130,11 @@ export class ExamAttemptsController {
     return this.service.getAttemptQuestions(user, id);
   }
 
+  @Get(':id/review')
+  review(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getAttemptForGrading(user, id);
+  }
+
   @Post(':id/submit')
   submit(
     @CurrentUser() user: AuthenticatedUser,

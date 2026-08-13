@@ -235,6 +235,31 @@ export class AssessmentService {
     return questions.map(stripAnswerKey);
   }
 
+  /**
+   * The staff counterpart to getAttemptQuestions — a real gap this
+   * closes: before this, there was no way for a teacher to see what a
+   * student actually wrote for a short-answer/essay question, since
+   * the only endpoint returning attempt questions was strictly
+   * learner-only. Unlike the learner-facing version, the answer key
+   * (correctOptionId) is kept, not stripped — a grader needs to see
+   * at a glance which MCQs were auto-marked right or wrong, alongside
+   * the free-text ones they still need to score themselves.
+   */
+  async getAttemptForGrading(
+    user: AuthenticatedUser,
+    attemptId: string
+  ): Promise<{ attempt: ExamAttempt & { learnerName: string | null }; questions: Question[] }> {
+    this.requireStaff(user);
+    const attempt = await this.repo.findAttemptWithLearnerName(attemptId);
+    if (!attempt) throw new NotFoundException('Attempt not found');
+    const questions = await this.repo.findQuestionsByIds(attempt.questionIds);
+    return { attempt, questions };
+  }
+
+  countPendingGradingForCourse(courseId: string): Promise<number> {
+    return this.repo.countPendingGradingForCourse(courseId);
+  }
+
   async submitAttempt(
     user: AuthenticatedUser,
     attemptId: string,
