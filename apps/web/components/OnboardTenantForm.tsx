@@ -13,21 +13,63 @@ const FACILITY_OPTIONS = [
   'Special Needs Facilities', 'Workshops'
 ];
 const PAYMENT_METHOD_OPTIONS = ['M-Pesa', 'Bank Transfer', 'Cash', 'Cheque'];
-// The 47 counties of Kenya. Stored by name in the countyCode field --
-// deliberately, not the official numeric IEBC codes: maintaining an
-// accurate 47-entry name-to-code mapping by hand risks quietly
-// getting some wrong, which is worse than a plain, correct name. The
-// column itself is free text with no format constraint, so this is
-// safe.
-const COUNTIES = [
-  'Baringo', 'Bomet', 'Bungoma', 'Busia', 'Elgeyo-Marakwet', 'Embu', 'Garissa', 'Homa Bay',
-  'Isiolo', 'Kajiado', 'Kakamega', 'Kericho', 'Kiambu', 'Kilifi', 'Kirinyaga', 'Kisii',
-  'Kisumu', 'Kitui', 'Kwale', 'Laikipia', 'Lamu', 'Machakos', 'Makueni', 'Mandera',
-  'Marsabit', 'Meru', 'Migori', 'Mombasa', "Murang'a", 'Nairobi', 'Nakuru', 'Nandi',
-  'Narok', 'Nyamira', 'Nyandarua', 'Nyeri', 'Samburu', 'Siaya', 'Taita-Taveta',
-  'Tana River', 'Tharaka-Nithi', 'Trans Nzoia', 'Turkana', 'Uasin Gishu', 'Vihiga',
-  'Wajir', 'West Pokot'
+// The 47 counties of Kenya, with their official numeric county codes
+// (001-047) per the Constitution's First Schedule / IEBC numbering.
+// The dropdown displays the name; the numeric code is what's stored
+// in countyCode and sent to the API, keeping it consistent with the
+// codes used in the government/platform-admin modules and tests.
+const COUNTIES: { name: string; code: string }[] = [
+  { name: 'Baringo', code: '030' },
+  { name: 'Bomet', code: '036' },
+  { name: 'Bungoma', code: '039' },
+  { name: 'Busia', code: '040' },
+  { name: 'Elgeyo-Marakwet', code: '028' },
+  { name: 'Embu', code: '014' },
+  { name: 'Garissa', code: '007' },
+  { name: 'Homa Bay', code: '043' },
+  { name: 'Isiolo', code: '011' },
+  { name: 'Kajiado', code: '034' },
+  { name: 'Kakamega', code: '037' },
+  { name: 'Kericho', code: '035' },
+  { name: 'Kiambu', code: '022' },
+  { name: 'Kilifi', code: '003' },
+  { name: 'Kirinyaga', code: '020' },
+  { name: 'Kisii', code: '045' },
+  { name: 'Kisumu', code: '042' },
+  { name: 'Kitui', code: '015' },
+  { name: 'Kwale', code: '002' },
+  { name: 'Laikipia', code: '031' },
+  { name: 'Lamu', code: '005' },
+  { name: 'Machakos', code: '016' },
+  { name: 'Makueni', code: '017' },
+  { name: 'Mandera', code: '009' },
+  { name: 'Marsabit', code: '010' },
+  { name: 'Meru', code: '012' },
+  { name: 'Migori', code: '044' },
+  { name: 'Mombasa', code: '001' },
+  { name: "Murang'a", code: '021' },
+  { name: 'Nairobi', code: '047' },
+  { name: 'Nakuru', code: '032' },
+  { name: 'Nandi', code: '029' },
+  { name: 'Narok', code: '033' },
+  { name: 'Nyamira', code: '046' },
+  { name: 'Nyandarua', code: '018' },
+  { name: 'Nyeri', code: '019' },
+  { name: 'Samburu', code: '025' },
+  { name: 'Siaya', code: '041' },
+  { name: 'Taita-Taveta', code: '006' },
+  { name: 'Tana River', code: '004' },
+  { name: 'Tharaka-Nithi', code: '013' },
+  { name: 'Trans Nzoia', code: '026' },
+  { name: 'Turkana', code: '023' },
+  { name: 'Uasin Gishu', code: '027' },
+  { name: 'Vihiga', code: '038' },
+  { name: 'Wajir', code: '008' },
+  { name: 'West Pokot', code: '024' },
 ];
+const COUNTY_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
+  COUNTIES.map((c) => [c.code, c.name])
+);
 
 const STEPS = ['Institution', 'Location', 'Contacts', 'Academics', 'Facilities', 'Technology', 'Finance', 'Branding', 'Administrator', 'Data migration', 'Review'];
 const MIGRATION_METHODS = ['EMPTY', 'IMPORT', 'ASSISTED'] as const;
@@ -345,8 +387,8 @@ export function OnboardTenantForm() {
             <select value={s.countyCode} onChange={(e) => update('countyCode', e.target.value)}>
               <option value="">Not set</option>
               {COUNTIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+                <option key={c.code} value={c.code}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -707,7 +749,7 @@ export function OnboardTenantForm() {
             </tr>
             <tr>
               <td style={{ color: 'var(--eb-fg-muted)' }}>County</td>
-              <td>{s.countyCode || '—'}</td>
+              <td>{s.countyCode ? `${COUNTY_CODE_TO_NAME[s.countyCode] ?? 'Unknown'} (${s.countyCode})` : '—'}</td>
             </tr>
             <tr>
               <td style={{ color: 'var(--eb-fg-muted)' }}>Contacts</td>
