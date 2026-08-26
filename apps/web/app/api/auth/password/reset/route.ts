@@ -4,7 +4,10 @@ import { API_BASE_URL } from '../../../../../lib/auth-cookies';
 /**
  * Proxies POST /v1/auth/password/reset directly, not through apiFetch —
  * same reasoning as forgot/login/invitation-accept: whoever is here
- * followed an emailed link and has no session yet.
+ * followed an emailed link and has no session yet. On success the
+ * upstream returns 204 No Content (no body); on failure it returns a
+ * real JSON error body, so only the success path needs the same
+ * empty-body handling forgot-password needed.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   let body: unknown;
@@ -27,6 +30,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       { message: 'Could not reach the server. Please try again shortly.' },
       { status: 502 }
     );
+  }
+
+  if (upstream.status === 204) {
+    return new NextResponse(null, { status: 204 });
   }
 
   let data: Record<string, unknown>;

@@ -5,9 +5,11 @@ import { API_BASE_URL } from '../../../../../lib/auth-cookies';
  * Proxies POST /v1/auth/password/forgot directly, not through apiFetch —
  * this is reachable by a signed-out visitor who has no session, same
  * reasoning as the login and invitation-accept routes. The upstream
- * endpoint always returns a uniform success response regardless of
- * whether the email matches an account, so this route does too by
- * construction: it just forwards whatever the API returns.
+ * endpoint always returns a uniform 204 No Content regardless of
+ * whether the email matches an account (nothing to leak either way),
+ * so this route must not assume a JSON body is present -- calling
+ * .json() on a genuinely empty 204 response throws, which is exactly
+ * what was happening here before this fix.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   let body: unknown;
@@ -30,6 +32,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       { message: 'Could not reach the server. Please try again shortly.' },
       { status: 502 }
     );
+  }
+
+  if (upstream.status === 204) {
+    return new NextResponse(null, { status: 204 });
   }
 
   let data: Record<string, unknown>;
