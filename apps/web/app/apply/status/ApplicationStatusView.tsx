@@ -88,6 +88,9 @@ export function ApplicationStatusView({ initialToken }: { initialToken: string }
           Submitted {new Date(result.submittedAt).toLocaleDateString()}
           {result.reviewedAt ? ` · Reviewed ${new Date(result.reviewedAt).toLocaleDateString()}` : ''}
         </p>
+        <a href="/" className="auth-submit" style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none', marginTop: 8 }}>
+          Return home
+        </a>
       </div>
     );
   }

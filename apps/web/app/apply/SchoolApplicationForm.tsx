@@ -111,6 +111,9 @@ export function SchoolApplicationForm() {
             <a href={statusUrl}>{statusUrl}</a>
           </p>
         )}
+        <a href="/" className="auth-submit" style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none', marginTop: 8 }}>
+          Return home
+        </a>
       </div>
     );
   }
