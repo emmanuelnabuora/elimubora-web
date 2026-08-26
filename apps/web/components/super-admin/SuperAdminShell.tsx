@@ -6,6 +6,7 @@ import {
   BookOpen,
   Boxes,
   Building2,
+  ClipboardCheck,
   Code2,
   Database,
   Headphones,
@@ -27,6 +28,7 @@ import styles from './super-admin.module.css';
 const nav = [
   ['Overview', '/super-admin', Activity],
   ['Institutions', '/super-admin/institutions', Building2],
+  ['School Applications', '/super-admin/school-applications', ClipboardCheck],
   ['Users & Identity', '/super-admin/users', Users],
   ['Roles & Access', '/super-admin/access', KeyRound],
   ['Platform Operations', '/super-admin/operations', ServerCog],

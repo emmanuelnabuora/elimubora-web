@@ -79,6 +79,24 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
       htmlBody: `<p><strong>${senderName}</strong> sent you a new message on ElimuBora.</p><p><a href="${messagesUrl}">Read and reply</a></p>`
     };
   }
+  if (message.template === 'school-application-received') {
+    const schoolName = String(message.data.schoolName ?? 'your school');
+    const statusUrl = String(message.data.statusUrl ?? '');
+    return {
+      subject: 'We\u2019ve received your ElimuBora application',
+      textBody: `Thanks for applying to bring ${schoolName} onto ElimuBora.\n\nOur team will review your application and get back to you. You can check its status any time:\n${statusUrl}\n\nIf you didn't submit this application, you can safely ignore this email.`,
+      htmlBody: `<p>Thanks for applying to bring <strong>${schoolName}</strong> onto ElimuBora.</p><p>Our team will review your application and get back to you. You can check its status any time:</p><p><a href="${statusUrl}">Check application status</a></p><p style="color:#666;font-size:13px">If you didn't submit this application, you can safely ignore this email.</p>`
+    };
+  }
+  if (message.template === 'school-application-rejected') {
+    const schoolName = String(message.data.schoolName ?? 'your school');
+    const reason = String(message.data.reason ?? '');
+    return {
+      subject: 'An update on your ElimuBora application',
+      textBody: `Thanks for your interest in bringing ${schoolName} onto ElimuBora.\n\nAfter review, we're not able to move forward with this application right now.\n\nReason: ${reason}\n\nIf you have questions or would like to reapply with updated information, just reach out.`,
+      htmlBody: `<p>Thanks for your interest in bringing <strong>${schoolName}</strong> onto ElimuBora.</p><p>After review, we're not able to move forward with this application right now.</p><p><strong>Reason:</strong> ${reason}</p><p style="color:#666;font-size:13px">If you have questions or would like to reapply with updated information, just reach out.</p>`
+    };
+  }
   if (message.template === 'new-announcement') {
     const title = String(message.data.title ?? 'New announcement');
     const announcementUrl = String(message.data.announcementUrl ?? '');

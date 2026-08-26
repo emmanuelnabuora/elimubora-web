@@ -11,6 +11,8 @@ import { AnalyticsController } from './analytics.controller';
 import { AnnouncementsReadController } from './announcements.controller';
 import { GuardianInvitationsController } from './guardian-invitations.controller';
 import { ParentPortalController } from './parent-portal.controller';
+import { SchoolApplicationsController } from './school-applications.controller';
+import { SchoolApplicationsService } from './school-applications.service';
 import { TeacherDashboardController } from './teacher-dashboard.controller';
 
 /**
@@ -37,7 +39,9 @@ import { TeacherDashboardController } from './teacher-dashboard.controller';
     ParentPortalController,
     AnalyticsController,
     AnnouncementsReadController,
-    GuardianInvitationsController
-  ]
+    GuardianInvitationsController,
+    SchoolApplicationsController
+  ],
+  providers: [SchoolApplicationsService]
 })
 export class CompositionModule {}
