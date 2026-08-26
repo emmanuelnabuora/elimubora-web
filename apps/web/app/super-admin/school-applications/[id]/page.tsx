@@ -3,6 +3,14 @@ import { apiFetch } from '../../../../lib/api-client';
 import { KENYA_COUNTY_CODE_TO_NAME } from '../../../../lib/kenya-counties';
 import { SchoolApplicationReviewActions } from '../../../../components/super-admin/SchoolApplicationReviewActions';
 
+interface ContactRow {
+  role?: string;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  preferredChannel?: string;
+}
+
 interface SchoolApplicationDetail {
   id: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -20,6 +28,10 @@ interface SchoolApplicationDetail {
   adminFullName: string;
   adminEmail: string;
   adminPhone: string | null;
+  contacts: ContactRow[] | null;
+  academicYear: number | null;
+  gradeLevels: string[] | null;
+  streams: string[] | null;
   notes: string | null;
   submittedAt: string;
   reviewedAt: string | null;
@@ -53,6 +65,7 @@ export default async function SchoolApplicationDetailPage({ params }: { params: 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           <Field label="County" value={app.countyCode ? (KENYA_COUNTY_CODE_TO_NAME[app.countyCode] ?? app.countyCode) : null} />
           <Field label="Sub-county" value={app.subCounty} />
+          <Field label="Ward" value={app.ward} />
           <Field label="Physical address" value={app.physicalAddress} />
           <Field label="Short name" value={app.shortName} />
           <Field label="Registration / NEMIS number" value={app.registrationNumber} />
@@ -62,6 +75,23 @@ export default async function SchoolApplicationDetailPage({ params }: { params: 
           <Field label="Motto" value={app.motto} />
         </div>
 
+        {(app.academicYear || app.gradeLevels?.length || app.streams?.length) && (
+          <>
+            <hr style={{ border: 'none', borderTop: '1px solid #e6e8f2' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <Field label="Academic year" value={app.academicYear ? String(app.academicYear) : null} />
+              <Field label="Grade levels" value={app.gradeLevels?.length ? app.gradeLevels.join(', ') : null} />
+              <Field label="Streams" value={app.streams?.length ? app.streams.join(', ') : null} />
+            </div>
+            {app.gradeLevels?.length && app.streams?.length && app.academicYear && (
+              <p style={{ fontSize: 12, color: '#98a2b3', margin: 0 }}>
+                Approving this application will automatically create {app.gradeLevels.length * app.streams.length} class
+                stream{app.gradeLevels.length * app.streams.length === 1 ? '' : 's'} for academic year {app.academicYear}.
+              </p>
+            )}
+          </>
+        )}
+
         <hr style={{ border: 'none', borderTop: '1px solid #e6e8f2' }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -69,6 +99,25 @@ export default async function SchoolApplicationDetailPage({ params }: { params: 
           <Field label="Contact email" value={app.adminEmail} />
           <Field label="Contact phone" value={app.adminPhone} />
         </div>
+
+        {app.contacts && app.contacts.length > 0 && (
+          <>
+            <hr style={{ border: 'none', borderTop: '1px solid #e6e8f2' }} />
+            <div>
+              <div style={{ fontSize: 12, color: '#98a2b3', marginBottom: 8 }}>Additional contacts</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {app.contacts.map((c, i) => (
+                  <div key={i} style={{ fontSize: 14, color: '#1f2437' }}>
+                    <strong>{c.fullName ?? 'Unnamed'}</strong>
+                    {c.role ? ` — ${c.role}` : ''}
+                    {c.email ? ` · ${c.email}` : ''}
+                    {c.phone ? ` · ${c.phone}` : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {app.notes && (
           <>

@@ -97,6 +97,37 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
       htmlBody: `<p>Thanks for your interest in bringing <strong>${schoolName}</strong> onto ElimuBora.</p><p>After review, we're not able to move forward with this application right now.</p><p><strong>Reason:</strong> ${reason}</p><p style="color:#666;font-size:13px">If you have questions or would like to reapply with updated information, just reach out.</p>`
     };
   }
+  if (message.template === 'school-application-approved') {
+    const schoolName = String(message.data.schoolName ?? 'Your school');
+    const acceptUrl = String(message.data.acceptUrl ?? '');
+    const classesCreated = Number(message.data.classesCreated ?? 0);
+    const classesStepText = classesCreated > 0
+      ? `We've already set up ${classesCreated} class stream${classesCreated === 1 ? '' : 's'} from the grade levels you gave us — check them under Classes.`
+      : 'Set up your class streams under Classes.';
+    return {
+      subject: `${schoolName} is approved on ElimuBora \u2014 here's how to get started`,
+      textBody:
+        `Good news \u2014 ${schoolName} has been approved to join ElimuBora.\n\n` +
+        `Here's how to finish setting up:\n\n` +
+        `1. Set your password: ${acceptUrl}\n` +
+        `2. Log in at ${''}elimubora.co as an Administrator, using this email address.\n` +
+        `3. Add your teaching and support staff so they can log in too.\n` +
+        `4. ${classesStepText}\n` +
+        `5. Once students are added, you can invite parents and guardians to link to their accounts.\n\n` +
+        `Questions along the way? Just reply to this email.`,
+      htmlBody:
+        `<p>Good news \u2014 <strong>${schoolName}</strong> has been approved to join ElimuBora.</p>` +
+        `<p>Here's how to finish setting up:</p>` +
+        `<ol>` +
+        `<li><a href="${acceptUrl}">Set your password</a></li>` +
+        `<li>Log in at elimubora.co as an Administrator, using this email address.</li>` +
+        `<li>Add your teaching and support staff so they can log in too.</li>` +
+        `<li>${classesStepText}</li>` +
+        `<li>Once students are added, you can invite parents and guardians to link to their accounts.</li>` +
+        `</ol>` +
+        `<p style="color:#666;font-size:13px">Questions along the way? Just reply to this email.</p>`
+    };
+  }
   if (message.template === 'new-announcement') {
     const title = String(message.data.title ?? 'New announcement');
     const announcementUrl = String(message.data.announcementUrl ?? '');

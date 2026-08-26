@@ -71,4 +71,10 @@ export class SchoolApplicationsController {
   ) {
     return this.service.reject(user, id, dto);
   }
+
+  @Post('admin/school-applications/:id/resend-invitation')
+  @Roles('platform_admin')
+  resendInvitation(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.resendInvitation(user, id);
+  }
 }

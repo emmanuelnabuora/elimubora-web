@@ -294,6 +294,7 @@ export class SchoolApplicationsService {
     const slug = dto.slug ?? slugify(application.schoolName);
     const inviteToken = randomBytes(32).toString('base64url');
     const inviteTokenHash = TokenService.hashRefreshToken(inviteToken);
+    let classesCreated = 0;
 
     try {
       await this.db.withContext({ tenantId, actorId: actor.userId }, async (client) => {
@@ -320,7 +321,6 @@ export class SchoolApplicationsService {
           [tenantId, slug, application.schoolName, dto.kind, application.countyCode, JSON.stringify(settings)]
         );
 
-        let classesCreated = 0;
         if (application.gradeLevels?.length && application.streams?.length && application.academicYear) {
           for (const grade of application.gradeLevels) {
             for (const stream of application.streams) {
@@ -379,8 +379,8 @@ export class SchoolApplicationsService {
     const acceptUrl = `${this.config.publicWebUrl}/invitations/accept?token=${inviteToken}`;
     await this.notifications.deliver({
       to: { email: application.adminEmail },
-      template: 'invitation',
-      data: { acceptUrl, role: 'school_admin' }
+      template: 'school-application-approved',
+      data: { schoolName: application.schoolName, acceptUrl, role: 'school_admin', classesCreated }
     });
 
     return { tenantId };
@@ -412,6 +412,88 @@ export class SchoolApplicationsService {
       to: { email: application.adminEmail },
       template: 'school-application-rejected',
       data: { schoolName: application.schoolName, reason: dto.reason }
+    });
+  }
+
+  /**
+   * For an already-approved application whose admin never got (or
+   * lost, or let expire) their invitation email. Deliberately not
+   * the same code path as the generic PATCH
+   * /v1/users/invitations/:id/resend (UsersRepository.resendInvitation):
+   * that one runs under the CALLING user's own ambient tenant via
+   * withTenantTransaction, which for a platform_admin is the
+   * 'platform' tenant, not the school's -- RLS on core.invitations
+   * (invitations_tenant: tenant_id = core.current_tenant_id()) would
+   * silently match zero rows rather than erroring, since the
+   * invitation genuinely exists, just under a tenant the caller's
+   * ambient context doesn't have. This method explicitly binds the
+   * school's own resultingTenantId via db.withContext, the same way
+   * approve() does for the original insert.
+   *
+   * Also deliberately more permissive than the generic resend's SQL:
+   * that one requires expires_at > now(), because it's meant for a
+   * still-valid invite that bounced. Here, an already-expired link is
+   * the expected reason someone is clicking this button, so expiry is
+   * not part of the WHERE clause -- only accepted_at IS NULL is,
+   * since an accepted invitation means the admin already has a real
+   * account and resending would be pointless (and confusing).
+   */
+  async resendInvitation(actor: AuthenticatedUser, id: string): Promise<void> {
+    const application = await this.getById(id);
+    if (application.status !== 'approved' || !application.resultingTenantId) {
+      throw new ConflictException('This application has not been approved, so there is no invitation to resend.');
+    }
+
+    const inviteToken = randomBytes(32).toString('base64url');
+    const inviteTokenHash = TokenService.hashRefreshToken(inviteToken);
+
+    const outcome = await this.db.withContext(
+      { tenantId: application.resultingTenantId, actorId: actor.userId },
+      async (client) => {
+        const { rows } = await client.query<{ id: string; accepted_at: Date | null }>(
+          `SELECT id, accepted_at FROM core.invitations
+            WHERE tenant_id = core.current_tenant_id()
+              AND email = $1
+              AND role = 'school_admin'
+            ORDER BY created_at DESC
+            LIMIT 1`,
+          [application.adminEmail]
+        );
+        const invitation = rows[0];
+        if (!invitation) return 'missing' as const;
+        if (invitation.accepted_at) return 'already-accepted' as const;
+
+        await client.query(
+          `UPDATE core.invitations
+              SET token_hash = $2, expires_at = now() + make_interval(days => $3), revoked_at = NULL
+            WHERE id = $1`,
+          [invitation.id, inviteTokenHash, this.config.auth.invitationTtlDays]
+        );
+        await this.audit.record(client, {
+          action: 'invitation.resent',
+          entityType: 'invitation',
+          entityId: invitation.id,
+          after: { schoolApplicationId: id, adminEmail: application.adminEmail },
+          actorType: 'user'
+        });
+        return 'resent' as const;
+      }
+    );
+
+    if (outcome === 'missing') {
+      // Shouldn't happen -- approve() always creates one -- but a
+      // clear message beats a confusing generic 404 if it somehow did.
+      throw new NotFoundException('No invitation found for this application. It may need to be re-approved.');
+    }
+    if (outcome === 'already-accepted') {
+      throw new ConflictException(`${application.adminFullName} has already completed account setup.`);
+    }
+
+    const acceptUrl = `${this.config.publicWebUrl}/invitations/accept?token=${inviteToken}`;
+    await this.notifications.deliver({
+      to: { email: application.adminEmail },
+      template: 'school-application-approved',
+      data: { schoolName: application.schoolName, role: 'school_admin', acceptUrl }
     });
   }
 }
