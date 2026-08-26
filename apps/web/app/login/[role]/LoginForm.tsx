@@ -299,7 +299,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           return (
             <>
               {question}?{' '}
-              <a href="/help">{action}</a>
+              <a href={role.contactHref ?? '/help'}>{action}</a>
             </>
           );
         })()}

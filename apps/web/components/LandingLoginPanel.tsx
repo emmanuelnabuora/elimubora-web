@@ -97,9 +97,17 @@ export function LandingLoginPanel() {
           welcomeEmoji: role.welcomeEmoji,
           welcomeLede: role.welcomeLede,
           features: role.features,
-          contactNote: role.contactNote
+          contactNote: role.contactNote,
+          contactHref: role.contactHref
         }}
       />
+
+      <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--eb-fg-muted)', marginTop: 'var(--ds-space-md, 16px)' }}>
+        New school?{' '}
+        <a href="/apply" style={{ color: 'var(--eb-primary)', fontWeight: 600 }}>
+          Apply to join ElimuBora
+        </a>
+      </p>
     </div>
   );
 }

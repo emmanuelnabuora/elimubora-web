@@ -11,6 +11,16 @@ export interface RoleConfig {
   welcomeLede: string;
   features: string[];
   contactNote: string;
+  /**
+   * Where contactNote's action text links to. Defaults to /help in
+   * LoginForm when omitted -- only the admin door overrides this,
+   * since "don't have an account" for a school administrator usually
+   * means the school itself isn't onboarded yet, not a forgotten
+   * individual login. Every other role's absence of an account is a
+   * genuine support question (a student/teacher/parent whose school
+   * hasn't set them up), so those keep pointing at /help.
+   */
+  contactHref?: string;
 }
 
 export const ROLE_CONFIG: Record<string, RoleConfig> = {
@@ -56,7 +66,8 @@ export const ROLE_CONFIG: Record<string, RoleConfig> = {
     welcomeEmoji: '\u{1F3E2}',
     welcomeLede: 'Manage with efficiency. Lead with insight.',
     features: ['Manage staff and students', 'Oversee academics', 'View reports and analytics'],
-    contactNote: "Don't have an account? Contact your system administrator."
+    contactNote: "Don't have an account? Apply to onboard your school.",
+    contactHref: '/apply'
   },
   ministry: {
     slug: 'ministry',
