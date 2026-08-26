@@ -159,6 +159,28 @@ export class UsersService {
       throw new BadRequestException('fullName and password are required for a new account');
     }
 
+    // A guardian invite must never attach to a student's own account,
+    // even when the emails coincidentally match (e.g. a family reusing
+    // one mailbox for a child's enrollment and later a parent invite).
+    // A learner and their guardian are different people; collapsing
+    // them into one account would let a "parent" login see and act as
+    // the child, and vice versa. Only checked for the specific
+    // dangerous direction -- an existing account already holding a
+    // learner membership in this tenant being asked to also become a
+    // parent here -- since a parent-invite-then-later-becomes-a-
+    // learner ordering isn't a realistic path in this product.
+    if (existing) {
+      const existingMemberships = await this.identity.listMembershipsForUser(existing.id);
+      const hasLearnerRoleHere = existingMemberships.some(
+        (m) => m.tenantId === invitation.tenantId && m.role === 'learner'
+      );
+      if (invitation.role === 'parent' && hasLearnerRoleHere) {
+        throw new ConflictException(
+          'This email is already registered as a student account and cannot also accept a guardian invitation. Please use a different email for the guardian, or contact the school to resolve this.'
+        );
+      }
+    }
+
     try {
       const result = await this.users.acceptInvitation({
         invitationId: invitation.id,
