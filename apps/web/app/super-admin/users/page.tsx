@@ -1,5 +1,6 @@
 import { apiFetch } from '../../../lib/api-client';
 import { RevokeSessionsControl } from '../../../components/super-admin/RevokeSessionsControl';
+import { DeleteUserControl } from '../../../components/super-admin/DeleteUserControl';
 
 interface PlatformUserRow {
   id: string;
@@ -67,8 +68,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#1f2437', textTransform: 'capitalize', fontSize: 13 }}>{u.status}</td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
                     <RevokeSessionsControl userId={u.id} />
+                    <DeleteUserControl userId={u.id} userName={u.fullName} />
                   </td>
                 </tr>
               ))

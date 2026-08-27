@@ -123,6 +123,150 @@ export class PlatformAdminRepository {
     });
   }
 
+  /**
+   * Soft delete only -- see 0001_foundation.sql: core.tenants.deleted_at
+   * exists specifically for this. A real DELETE FROM core.tenants would
+   * either cascade-destroy years of student/academic records across
+   * ~49 FK-referencing tables, or (for the ~47 of those without ON
+   * DELETE CASCADE) simply fail outright with a constraint violation.
+   *
+   * Setting deleted_at is also not cosmetic: the login membership
+   * lookup (identity.repository.ts) already filters
+   * `AND t.deleted_at IS NULL`, so every user of this tenant is locked
+   * out of it immediately, with no separate per-membership update
+   * needed. It does NOT touch core.users rows -- a person can belong
+   * to more than one tenant, and deleting one shouldn't touch their
+   * account or their access to any other tenant they're in.
+   *
+   * Sessions for every currently-active member of this tenant are also
+   * revoked in the same transaction, for the same reason
+   * revokeUserSessions exists: without it, anyone already holding a
+   * still-valid access token could keep acting in this tenant for up
+   * to AUTH_ACCESS_TTL_SECONDS (15 minutes by default) after "delete"
+   * was clicked, even though deleted_at now says otherwise.
+   *
+   * confirmName is checked here, not just in the DTO shape, against
+   * the tenant's actual current name -- case/whitespace-insensitively,
+   * since this is meant to catch someone deleting the wrong row, not
+   * to be a puzzle.
+   */
+  async deleteInstitution(
+    actorId: string,
+    actorTenantId: string,
+    tenantId: string,
+    confirmName: string,
+    reason: string
+  ): Promise<{ ok: true; id: string; name: string } | { ok: false; error: 'not_found' | 'name_mismatch' }> {
+    return this.db.withContext({ tenantId: actorTenantId, actorId }, async (client) => {
+      const before = await client.query<{ id: string; name: string; status: string }>(
+        'SELECT id, name, status FROM core.tenants WHERE id = $1 AND deleted_at IS NULL FOR UPDATE',
+        [tenantId]
+      );
+      const tenant = before.rows[0];
+      if (!tenant) return { ok: false, error: 'not_found' };
+      if (tenant.name.trim().toLowerCase() !== confirmName.trim().toLowerCase()) {
+        return { ok: false, error: 'name_mismatch' };
+      }
+
+      await client.query(
+        `UPDATE core.tenants SET status = 'archived', deleted_at = now() WHERE id = $1`,
+        [tenantId]
+      );
+
+      // core.memberships' RLS restricts elimubora_app to the actor's
+      // own bound tenant -- irrelevant here, since we need every
+      // member of the tenant being DELETED, not the platform_admin's
+      // own. core.platform_tenant_member_ids (0036) is the narrow
+      // SECURITY DEFINER escape hatch for exactly this; the actual
+      // revoke below is ordinary elimubora_app SQL, since
+      // core.refresh_tokens has no RLS at all.
+      const memberIds = await client.query<{ platform_tenant_member_ids: string[] }>(
+        'SELECT core.platform_tenant_member_ids($1)',
+        [tenantId]
+      );
+      const userIds = memberIds.rows[0]?.platform_tenant_member_ids ?? [];
+
+      const sessions = userIds.length
+        ? await client.query<{ id: string }>(
+            `UPDATE core.refresh_tokens
+                SET revoked_at = now()
+              WHERE revoked_at IS NULL AND user_id = ANY($1::uuid[])
+              RETURNING id`,
+            [userIds]
+          )
+        : { rowCount: 0 };
+
+      await client.query(
+        `INSERT INTO core.audit_log (tenant_id, actor_id, action, entity_type, entity_id, before, after)
+         VALUES ($1, $2, 'platform.tenant.deleted', 'tenant', $3, $4::jsonb, $5::jsonb)`,
+        [
+          actorTenantId,
+          actorId,
+          tenantId,
+          JSON.stringify(tenant),
+          JSON.stringify({ reason, sessionsRevoked: sessions.rowCount ?? 0 })
+        ]
+      );
+
+      return { ok: true, id: tenant.id, name: tenant.name };
+    });
+  }
+
+  /**
+   * Soft delete only, same rationale as deleteInstitution --
+   * core.users.deleted_at already exists for exactly this, and 54
+   * tables reference core.users(id) by foreign key (only 2, both
+   * platform-privileged-identity tables, cascade on delete). Setting
+   * status = 'suspended' alongside deleted_at is what actually blocks
+   * login (auth.service.ts already rejects any non-'active' user at
+   * the password check), matching how an ordinary suspension works --
+   * deleted_at is what distinguishes "deleted" from "temporarily
+   * suspended" for anyone reading this row later.
+   *
+   * The actual core.users write happens inside
+   * core.platform_delete_user (0036) -- the only UPDATE policy on
+   * that table is "a user can update their own row", so an ordinary
+   * elimubora_app UPDATE targeting someone else's id affects zero
+   * rows under RLS, silently. Sessions are revoked in the same
+   * transaction for the same reason as deleteInstitution: without
+   * it, a still-valid access token would keep working for up to
+   * AUTH_ACCESS_TTL_SECONDS after deletion.
+   */
+  async deleteUser(
+    actorId: string,
+    actorTenantId: string,
+    userId: string,
+    reason: string
+  ): Promise<{ id: string; fullName: string } | null> {
+    return this.db.withContext({ tenantId: actorTenantId, actorId }, async (client) => {
+      const result = await client.query<{ platform_delete_user: { id: string; fullName: string } | null }>(
+        'SELECT core.platform_delete_user($1)',
+        [userId]
+      );
+      const deleted = result.rows[0]?.platform_delete_user ?? null;
+      if (!deleted) return null;
+
+      const sessions = await client.query<{ id: string }>(
+        `UPDATE core.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL RETURNING id`,
+        [userId]
+      );
+
+      await client.query(
+        `INSERT INTO core.audit_log (tenant_id, actor_id, action, entity_type, entity_id, before, after)
+         VALUES ($1, $2, 'platform.user.deleted', 'user', $3, $4::jsonb, $5::jsonb)`,
+        [
+          actorTenantId,
+          actorId,
+          userId,
+          JSON.stringify(deleted),
+          JSON.stringify({ reason, sessionsRevoked: sessions.rowCount ?? 0 })
+        ]
+      );
+
+      return deleted;
+    });
+  }
+
   async securityAlerts(limit = 50) {
     const { rows } = await this.db.query<Record<string, unknown>>(`SELECT * FROM platform.security_alerts ORDER BY created_at DESC LIMIT $1`, [limit]);
     return rows;

@@ -183,4 +183,181 @@ d('Platform Admin (integration)', () => {
       .expect(200);
     expect(approved.body.status).toBe('approved');
   });
+
+  describe('deleting a user (soft delete)', () => {
+    it('a non-platform_admin cannot delete a user', async () => {
+      const teacherId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [teacherEmail])).rows[0].id;
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${teacherId}/delete`)
+        .set('authorization', `Bearer ${teacherToken}`)
+        .send({ reason: 'attempting as teacher' })
+        .expect(403);
+    });
+
+    it('a platform_admin cannot delete their own account', async () => {
+      const me = await db.query(`SELECT id FROM core.users WHERE email = $1`, [adminAEmail]);
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${me.rows[0].id}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: 'trying to delete myself' })
+        .expect(403);
+    });
+
+    it('deletes the user, revokes their sessions, and blocks their next login -- without touching other tenants they belong to', async () => {
+      const email = `pa-delete-target-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, fullName: 'Delete Target', password, tenantId, role: 'teacher' })
+        .expect(201);
+      const targetToken = await login(email);
+      const targetId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [email])).rows[0].id;
+
+      // A currently-valid access token still works before deletion.
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${targetToken}`)
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${targetId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: `Integration test deletion ${stamp}` })
+        .expect(201);
+      expect(res.body.id).toBe(targetId);
+
+      const row = await db.query(`SELECT status, deleted_at FROM core.users WHERE id = $1`, [targetId]);
+      expect(row.rows[0].status).toBe('suspended');
+      expect(row.rows[0].deleted_at).not.toBeNull();
+
+      const tokens = await db.query(
+        `SELECT count(*)::int AS n FROM core.refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL`,
+        [targetId]
+      );
+      expect(tokens.rows[0].n).toBe(0);
+
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email, password })
+        .expect(401);
+
+      await db.query(`ALTER TABLE core.audit_log NO FORCE ROW LEVEL SECURITY`);
+      try {
+        const audit = await db.query(
+          `SELECT action FROM core.audit_log WHERE entity_id = $1 AND action = 'platform.user.deleted'`,
+          [targetId]
+        );
+        expect(audit.rows).toHaveLength(1);
+      } finally {
+        await db.query(`ALTER TABLE core.audit_log FORCE ROW LEVEL SECURITY`);
+      }
+    });
+
+    it('a second delete attempt on an already-deleted user returns 404, not a silent success', async () => {
+      const email = `pa-delete-twice-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, fullName: 'Delete Twice', password, tenantId, role: 'teacher' })
+        .expect(201);
+      const targetId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [email])).rows[0].id;
+
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${targetId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: 'first delete' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${targetId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: 'second delete' })
+        .expect(404);
+    });
+  });
+
+  describe('deleting an institution (soft delete)', () => {
+    it('a non-platform_admin cannot delete an institution', async () => {
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/institutions/${tenantId}/delete`)
+        .set('authorization', `Bearer ${teacherToken}`)
+        .send({ confirmName: 'Platform Admin Test School', reason: 'attempting as teacher' })
+        .expect(403);
+    });
+
+    it('a platform_admin cannot delete their own platform tenant', async () => {
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/institutions/${tenantId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ confirmName: 'Platform Admin Test School', reason: 'trying to delete our own tenant' })
+        .expect(403);
+    });
+
+    it('rejects deletion when the confirmation name does not match, and performs no changes', async () => {
+      const school = await db.query(
+        `INSERT INTO core.tenants (slug, name, kind) VALUES ($1, 'Confirm Mismatch School', 'school') RETURNING id`,
+        [`pa-mismatch-${stamp}`]
+      );
+      const schoolId = school.rows[0].id;
+
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/institutions/${schoolId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ confirmName: 'The Wrong Name Entirely', reason: `Integration test ${stamp}` })
+        .expect(403);
+
+      const row = await db.query(`SELECT deleted_at FROM core.tenants WHERE id = $1`, [schoolId]);
+      expect(row.rows[0].deleted_at).toBeNull();
+    });
+
+    it('deletes the institution, revokes every member\u2019s sessions, and locks every member out -- without touching their accounts', async () => {
+      const school = await db.query(
+        `INSERT INTO core.tenants (slug, name, kind) VALUES ($1, 'Doomed Test School', 'school') RETURNING id`,
+        [`pa-doomed-${stamp}`]
+      );
+      const schoolId = school.rows[0].id;
+
+      const memberEmail = `pa-doomed-member-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email: memberEmail, fullName: 'Doomed Member', password, tenantId: schoolId, role: 'school_admin' })
+        .expect(201);
+      const memberToken = await login(memberEmail);
+      const memberId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [memberEmail])).rows[0].id;
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/platform-admin/institutions/${schoolId}/delete`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ confirmName: 'doomed test school', reason: `Integration test ${stamp}` }) // case-insensitive on purpose
+        .expect(201);
+      expect(res.body.id).toBe(schoolId);
+
+      const tenantRow = await db.query(`SELECT status, deleted_at FROM core.tenants WHERE id = $1`, [schoolId]);
+      expect(tenantRow.rows[0].status).toBe('archived');
+      expect(tenantRow.rows[0].deleted_at).not.toBeNull();
+
+      // The member's own account is untouched -- only their access to
+      // this tenant is gone.
+      const userRow = await db.query(`SELECT status, deleted_at FROM core.users WHERE id = $1`, [memberId]);
+      expect(userRow.rows[0].status).toBe('active');
+      expect(userRow.rows[0].deleted_at).toBeNull();
+
+      const tokens = await db.query(
+        `SELECT count(*)::int AS n FROM core.refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL`,
+        [memberId]
+      );
+      expect(tokens.rows[0].n).toBe(0);
+
+      // A still-registered account with a still-correct password, but
+      // no active membership left in a non-deleted tenant to log
+      // into -- auth.service.ts's login() correctly distinguishes
+      // this (403, "No active institution membership") from a plain
+      // bad-credentials failure (401), since the password check
+      // itself succeeds.
+      await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({ email: memberEmail, password })
+        .expect(403);
+
+      void memberToken; // acquired only to prove it existed pre-deletion
+    });
+  });
 });

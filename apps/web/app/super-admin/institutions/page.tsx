@@ -1,5 +1,6 @@
 import { apiFetch } from '../../../lib/api-client';
 import { InstitutionStatusControl } from '../../../components/super-admin/InstitutionStatusControl';
+import { DeleteInstitutionControl } from '../../../components/super-admin/DeleteInstitutionControl';
 
 interface PlatformInstitution {
   id: string;
@@ -44,12 +45,13 @@ export default async function InstitutionsPage({
               <th style={{ padding: '12px 16px', color: '#6b7285', fontWeight: 600 }}>County</th>
               <th style={{ padding: '12px 16px', color: '#6b7285', fontWeight: 600 }}>Created</th>
               <th style={{ padding: '12px 16px', color: '#6b7285', fontWeight: 600 }}>Status</th>
+              <th style={{ padding: '12px 16px', color: '#6b7285', fontWeight: 600 }}></th>
             </tr>
           </thead>
           <tbody>
             {result.rows.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#98a2b3' }}>
+                <td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#98a2b3' }}>
                   No institutions found.
                 </td>
               </tr>
@@ -65,6 +67,9 @@ export default async function InstitutionsPage({
                   <td style={{ padding: '12px 16px', color: '#1f2437' }}>{new Date(inst.createdAt).toLocaleDateString()}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <InstitutionStatusControl institutionId={inst.id} status={inst.status} />
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <DeleteInstitutionControl institutionId={inst.id} institutionName={inst.name} />
                   </td>
                 </tr>
               ))

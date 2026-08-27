@@ -33,3 +33,23 @@ export const featureFlagSchema = z.object({
   reason: z.string().trim().min(5).max(500)
 });
 export type FeatureFlagDto = z.infer<typeof featureFlagSchema>;
+
+/**
+ * Soft delete only -- see platform-admin.repository.ts deleteInstitution
+ * for why a real DELETE FROM core.tenants is not on the table at all
+ * (49 tables reference it by foreign key, almost none with ON DELETE
+ * CASCADE). confirmName exists purely as friction: typing the exact
+ * tenant name is the same "type to confirm" pattern used for
+ * destructive actions elsewhere, and it's checked server-side, not
+ * just disabling a button client-side.
+ */
+export const deleteTenantSchema = z.object({
+  confirmName: z.string().trim().min(1),
+  reason: z.string().trim().min(5).max(500)
+});
+export type DeleteTenantDto = z.infer<typeof deleteTenantSchema>;
+
+export const deleteUserSchema = z.object({
+  reason: z.string().trim().min(5).max(500)
+});
+export type DeleteUserDto = z.infer<typeof deleteUserSchema>;

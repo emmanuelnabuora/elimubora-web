@@ -1,6 +1,8 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../core/auth/auth.types';
-import type { AcknowledgeAlertDto, FeatureFlagDto, InstitutionStatusDto, ListQueryDto, SupportStatusDto } from './platform-admin.dto';
+import type {
+  AcknowledgeAlertDto, DeleteTenantDto, DeleteUserDto, FeatureFlagDto, InstitutionStatusDto, ListQueryDto, SupportStatusDto
+} from './platform-admin.dto';
 import { PlatformAdminRepository } from './platform-admin.repository';
 
 @Injectable()
@@ -25,6 +27,21 @@ export class PlatformAdminService {
     this.assertPlatformAdmin(user);
     if (id === user.userId) throw new ForbiddenException('Use the account security page to revoke your own privileged session');
     return this.repository.revokeUserSessions(user.userId, user.tenantId, id, reason);
+  }
+  async deleteInstitution(user: AuthenticatedUser, id: string, dto: DeleteTenantDto) {
+    this.assertPlatformAdmin(user);
+    if (id === user.tenantId) throw new ForbiddenException('Cannot delete the platform tenant');
+    const result = await this.repository.deleteInstitution(user.userId, user.tenantId, id, dto.confirmName, dto.reason);
+    if (!result.ok && result.error === 'not_found') throw new NotFoundException('Institution not found');
+    if (!result.ok && result.error === 'name_mismatch') throw new ForbiddenException('Confirmation name does not match this institution\u2019s name');
+    return result;
+  }
+  async deleteUser(user: AuthenticatedUser, id: string, dto: DeleteUserDto) {
+    this.assertPlatformAdmin(user);
+    if (id === user.userId) throw new ForbiddenException('Cannot delete your own account');
+    const value = await this.repository.deleteUser(user.userId, user.tenantId, id, dto.reason);
+    if (!value) throw new NotFoundException('User not found');
+    return value;
   }
   securityAlerts(user: AuthenticatedUser) { this.assertPlatformAdmin(user); return this.repository.securityAlerts(); }
   async acknowledgeAlert(user: AuthenticatedUser, id: string, dto: AcknowledgeAlertDto) {
