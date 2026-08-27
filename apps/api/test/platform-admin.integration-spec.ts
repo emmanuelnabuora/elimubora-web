@@ -240,6 +240,16 @@ d('Platform Admin (integration)', () => {
         .send({ email, password })
         .expect(401);
 
+      // The real point of this feature: the access token issued
+      // *before* deletion -- still well within its own TTL -- must
+      // stop working immediately, not just future logins. Before the
+      // JwtAuthGuard revocation check, this would have returned 200
+      // for up to AUTH_ACCESS_TTL_SECONDS after deletion.
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${targetToken}`)
+        .expect(401);
+
       await db.query(`ALTER TABLE core.audit_log NO FORCE ROW LEVEL SECURITY`);
       try {
         const audit = await db.query(
@@ -357,7 +367,79 @@ d('Platform Admin (integration)', () => {
         .send({ email: memberEmail, password })
         .expect(403);
 
-      void memberToken; // acquired only to prove it existed pre-deletion
+      // Same point as the user-deletion test above: the access token
+      // issued *before* the institution was deleted must stop working
+      // immediately, not linger until its own TTL naturally expires.
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${memberToken}`)
+        .expect(401);
+    });
+  });
+
+  describe('an already-issued access token stops working immediately after its session is revoked', () => {
+    it('revoke-sessions invalidates a still-valid, unexpired access token on its very next request', async () => {
+      const email = `pa-revoke-live-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, fullName: 'Revoke Live Target', password, tenantId, role: 'teacher' })
+        .expect(201);
+      const targetToken = await login(email);
+      const targetId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [email])).rows[0].id;
+
+      // Works before revocation.
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${targetToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${targetId}/revoke-sessions`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: `Integration test revoke ${stamp}` })
+        .expect(201);
+
+      // Same token, no re-login in between: this is the actual gap
+      // JwtAuthGuard's session check closes. Before it existed, this
+      // request would still return 200 for up to
+      // AUTH_ACCESS_TTL_SECONDS after revocation, contradicting what
+      // RevokeSessionsControl's own confirm dialog promises ("signed
+      // out everywhere immediately").
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${targetToken}`)
+        .expect(401);
+    });
+
+    it('a token issued to a completely different, still-active session is unaffected', async () => {
+      // Guards against an overly broad revocation check (e.g.
+      // matching on user_id instead of the specific family_id) that
+      // would sign out every session for a user instead of just the
+      // one intended.
+      const email = `pa-revoke-unaffected-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, fullName: 'Unaffected Bystander', password, tenantId, role: 'teacher' })
+        .expect(201);
+      const bystanderToken = await login(email);
+
+      const targetEmail = `pa-revoke-live-2-${stamp}@platform.ke`;
+      await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email: targetEmail, fullName: 'Revoke Live Target Two', password, tenantId, role: 'teacher' })
+        .expect(201);
+      const targetId = (await db.query(`SELECT id FROM core.users WHERE email = $1`, [targetEmail])).rows[0].id;
+
+      await request(app.getHttpServer())
+        .post(`/v1/platform-admin/users/${targetId}/revoke-sessions`)
+        .set('authorization', `Bearer ${adminAToken}`)
+        .send({ reason: `Integration test revoke ${stamp}` })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .get('/v1/auth/me')
+        .set('authorization', `Bearer ${bystanderToken}`)
+        .expect(200);
     });
   });
 });
