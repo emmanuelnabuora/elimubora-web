@@ -141,6 +141,7 @@ export function SchoolApplicationForm() {
 
   function canAdvance(): boolean {
     if (step === 0) return s.schoolName.trim().length >= 2;
+    if (step === 2) return !hasDuplicateStreams;
     if (step === 3) return s.adminFullName.trim().length >= 2 && /\S+@\S+\.\S+/.test(s.adminEmail);
     return true;
   }
@@ -159,9 +160,20 @@ export function SchoolApplicationForm() {
     .filter(Boolean)
     .slice(0, 10);
 
+  const normalizedStreams = streams.map((x) => x.toUpperCase());
+  const duplicateStreamNames = [
+    ...new Set(normalizedStreams.filter((x, i) => normalizedStreams.indexOf(x) !== i))
+  ];
+  const hasDuplicateStreams = duplicateStreamNames.length > 0;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!canAdvance()) return;
+    if (hasDuplicateStreams) {
+      setError('Please fix the duplicate stream name before submitting.');
+      setStep(2);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -409,6 +421,12 @@ export function SchoolApplicationForm() {
             <span>Streams (optional)</span>
             <input value={s.streamsText} onChange={(e) => update('streamsText', e.target.value)} placeholder="e.g. A, B, C" />
             <span style={{ fontWeight: 400, fontSize: 12, color: '#8a91a3' }}>Separate stream names with commas.</span>
+            {hasDuplicateStreams && (
+              <span style={{ fontWeight: 600, fontSize: 12, color: '#EF4444' }}>
+                &ldquo;{duplicateStreamNames.join(', ')}&rdquo; {duplicateStreamNames.length > 1 ? 'appear' : 'appears'} more than
+                once — each stream name must be unique.
+              </span>
+            )}
           </label>
         </>
       )}

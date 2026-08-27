@@ -324,12 +324,13 @@ export class SchoolApplicationsService {
         if (application.gradeLevels?.length && application.streams?.length && application.academicYear) {
           for (const grade of application.gradeLevels) {
             for (const stream of application.streams) {
-              await client.query(
+              const { rowCount } = await client.query(
                 `INSERT INTO sis.class_streams (id, tenant_id, name, grade_level, academic_year)
-                 VALUES ($1, core.current_tenant_id(), $2, $3, $4)`,
+                 VALUES ($1, core.current_tenant_id(), $2, $3, $4)
+                 ON CONFLICT (tenant_id, name, academic_year) DO NOTHING`,
                 [randomUUID(), `${grade} ${stream}`, grade, application.academicYear]
               );
-              classesCreated += 1;
+              if (rowCount) classesCreated += 1;
             }
           }
         }
@@ -372,6 +373,11 @@ export class SchoolApplicationsService {
     } catch (err) {
       if (isUniqueViolation(err, 'tenants_slug_key')) {
         throw new ConflictException(`A school with the slug "${slug}" already exists. Choose a different slug.`);
+      }
+      if (isUniqueViolation(err, 'class_streams_tenant_id_name_academic_year_key')) {
+        throw new ConflictException(
+          'This application lists duplicate stream names for the same grade and academic year. Please correct the application and try again.'
+        );
       }
       throw err;
     }

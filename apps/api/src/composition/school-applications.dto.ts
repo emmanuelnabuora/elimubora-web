@@ -54,7 +54,17 @@ export const submitSchoolApplicationSchema = z.object({
   // grade x stream combination.
   academicYear: z.number().int().min(2020).max(2100).optional(),
   gradeLevels: z.array(z.enum(GRADE_LEVELS)).max(14).optional(),
-  streams: z.array(z.string().min(1).max(20)).max(10).optional(),
+  streams: z
+    .array(z.string().min(1).max(20))
+    .max(10)
+    .refine(
+      (streams) => {
+        const normalized = streams.map((s) => s.trim().toUpperCase());
+        return new Set(normalized).size === normalized.length;
+      },
+      { message: 'Stream names must be unique (case-insensitive).' }
+    )
+    .optional(),
 
   notes: z.string().max(2000).optional()
 });
