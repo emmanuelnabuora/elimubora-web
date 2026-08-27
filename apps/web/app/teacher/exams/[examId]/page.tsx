@@ -1,5 +1,5 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../../lib/api-client';
-import { GradeAttemptForm } from '../../../../components/GradeAttemptForm';
 
 interface AttemptItem {
   id: string;
@@ -47,9 +47,13 @@ export default async function ExamAttemptsPage({ params }: { params: Promise<{ e
                   <td style={{ textTransform: 'capitalize' }}>{a.status.replace('_', ' ')}</td>
                   <td>
                     {a.status === 'submitted' ? (
-                      <GradeAttemptForm attemptId={a.id} autoScore={a.autoScore} />
+                      <Link href={`/teacher/grading/exam-attempt/${a.id}`} className="admin-nav-link" style={{ padding: '5px 12px', fontSize: 12 }}>
+                        Grade &rarr;
+                      </Link>
                     ) : a.status === 'graded' ? (
-                      <strong>{a.finalScore}</strong>
+                      <Link href={`/teacher/grading/exam-attempt/${a.id}`} className="admin-nav-link" style={{ padding: '5px 12px', fontSize: 12 }}>
+                        {a.finalScore} &middot; Review
+                      </Link>
                     ) : (
                       <span style={{ color: 'var(--eb-fg-muted)' }}>In progress</span>
                     )}
