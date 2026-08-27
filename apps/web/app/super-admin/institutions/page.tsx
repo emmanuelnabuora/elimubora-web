@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../../lib/api-client';
 import { InstitutionStatusControl } from '../../../components/super-admin/InstitutionStatusControl';
 import { DeleteInstitutionControl } from '../../../components/super-admin/DeleteInstitutionControl';
@@ -59,7 +60,9 @@ export default async function InstitutionsPage({
               result.rows.map((inst) => (
                 <tr key={inst.id} style={{ borderTop: '1px solid #e6e8f2' }}>
                   <td style={{ padding: '12px 16px', color: '#1f2437' }}>
-                    {inst.name}
+                    <Link href={`/super-admin/institutions/${inst.id}`} style={{ color: '#1f2437', textDecoration: 'none', fontWeight: 600 }}>
+                      {inst.name}
+                    </Link>
                     <div style={{ fontSize: 12, color: '#98a2b3' }}>{inst.slug}</div>
                   </td>
                   <td style={{ padding: '12px 16px', color: '#1f2437', textTransform: 'capitalize' }}>{inst.kind}</td>

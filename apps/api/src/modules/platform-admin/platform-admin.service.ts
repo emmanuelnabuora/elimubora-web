@@ -15,6 +15,12 @@ export class PlatformAdminService {
 
   overview(user: AuthenticatedUser) { this.assertPlatformAdmin(user); return this.repository.overview(); }
   listInstitutions(user: AuthenticatedUser, query: ListQueryDto) { this.assertPlatformAdmin(user); return this.repository.listInstitutions(query); }
+  async getInstitutionOverview(user: AuthenticatedUser, id: string) {
+    this.assertPlatformAdmin(user);
+    const value = await this.repository.getInstitutionOverview(id);
+    if (!value) throw new NotFoundException('Institution not found');
+    return value;
+  }
   async updateInstitutionStatus(user: AuthenticatedUser, id: string, dto: InstitutionStatusDto) {
     this.assertPlatformAdmin(user);
     if (id === user.tenantId && dto.status !== 'active') throw new ForbiddenException('Cannot suspend the active platform tenant');

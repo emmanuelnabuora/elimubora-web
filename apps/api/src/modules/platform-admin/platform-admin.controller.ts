@@ -15,6 +15,7 @@ export class PlatformAdminController {
 
   @Get('overview') overview(@CurrentUser() user: AuthenticatedUser) { return this.service.overview(user); }
   @Get('institutions') institutions(@CurrentUser() user: AuthenticatedUser, @Query(new ZodValidationPipe(listQuerySchema)) query: ListQueryDto) { return this.service.listInstitutions(user, query); }
+  @Get('institutions/:id') institutionOverview(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.getInstitutionOverview(user, id); }
   @Patch('institutions/:id/status') institutionStatus(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body(new ZodValidationPipe(institutionStatusSchema)) dto: InstitutionStatusDto) { return this.service.updateInstitutionStatus(user, id, dto); }
   @Post('institutions/:id/delete') deleteInstitution(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body(new ZodValidationPipe(deleteTenantSchema)) dto: DeleteTenantDto) { return this.service.deleteInstitution(user, id, dto); }
   @Get('users') users(@CurrentUser() user: AuthenticatedUser, @Query(new ZodValidationPipe(listQuerySchema)) query: ListQueryDto) { return this.service.listUsers(user, query); }

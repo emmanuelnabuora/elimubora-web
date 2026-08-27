@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../core/database/database.service';
 import { WorkerDatabaseService } from '../../core/database/worker-database.service';
 import type { ListQueryDto } from './platform-admin.dto';
-import type { PlatformInstitution, PlatformUserRow } from './platform-admin.types';
+import type { PlatformInstitution, PlatformInstitutionOverview, PlatformUserRow } from './platform-admin.types';
 
 @Injectable()
 export class PlatformAdminRepository {
@@ -61,6 +61,100 @@ export class PlatformAdminRepository {
         nemisCode: r.nemis_code ? String(r.nemis_code) : null,
         status: String(r.status) as PlatformInstitution['status'],
         createdAt: new Date(r.created_at as Date | string).toISOString()
+      }))
+    };
+  }
+
+  async getInstitutionOverview(id: string): Promise<PlatformInstitutionOverview | null> {
+    const tenantResult = await this.db.query<Record<string, unknown>>(
+      `SELECT id, name, slug::text, kind, county_code, nemis_code, status, created_at, settings
+       FROM core.tenants WHERE id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
+    const tenant = tenantResult.rows[0];
+    if (!tenant) return null;
+
+    const [enrollmentResult, studentsResult, adminsResult, invitesResult, streamsResult] = await Promise.all([
+      this.workerDb.query<{ teachers: string; parents: string; school_admins: string; principals: string }>(
+        `SELECT
+           count(*) FILTER (WHERE role = 'teacher')::text AS teachers,
+           count(*) FILTER (WHERE role = 'parent')::text AS parents,
+           count(*) FILTER (WHERE role = 'school_admin')::text AS school_admins,
+           count(*) FILTER (WHERE role = 'principal')::text AS principals
+         FROM core.memberships
+         WHERE tenant_id = $1 AND status = 'active' AND deleted_at IS NULL`,
+        [id]
+      ),
+      this.workerDb.query<{ total: string }>(
+        `SELECT count(*)::text AS total FROM sis.student_profiles
+         WHERE tenant_id = $1 AND status = 'active' AND deleted_at IS NULL`,
+        [id]
+      ),
+      this.workerDb.query<{ id: string; full_name: string; email: string; role: string; created_at: Date | string }>(
+        `SELECT u.id, u.full_name, u.email, m.role, m.created_at
+         FROM core.memberships m
+         JOIN core.users u ON u.id = m.user_id
+         WHERE m.tenant_id = $1 AND m.role IN ('school_admin', 'principal')
+           AND m.status = 'active' AND m.deleted_at IS NULL AND u.deleted_at IS NULL
+         ORDER BY m.created_at ASC`,
+        [id]
+      ),
+      this.workerDb.query<{ id: string; email: string; role: string; expires_at: Date | string; created_at: Date | string }>(
+        `SELECT id, email, role, expires_at, created_at
+         FROM core.invitations
+         WHERE tenant_id = $1 AND role IN ('school_admin', 'principal')
+           AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+         ORDER BY created_at DESC`,
+        [id]
+      ),
+      this.workerDb.query<{ grade_level: string; academic_year: number; stream_names: string[]; stream_count: string }>(
+        `SELECT grade_level, academic_year, array_agg(name ORDER BY name) AS stream_names, count(*)::text AS stream_count
+         FROM sis.class_streams
+         WHERE tenant_id = $1 AND deleted_at IS NULL
+         GROUP BY grade_level, academic_year
+         ORDER BY academic_year DESC, grade_level`,
+        [id]
+      )
+    ]);
+
+    const e = enrollmentResult.rows[0];
+
+    return {
+      id: String(tenant.id),
+      name: String(tenant.name),
+      slug: String(tenant.slug),
+      kind: String(tenant.kind),
+      countyCode: tenant.county_code ? String(tenant.county_code) : null,
+      nemisCode: tenant.nemis_code ? String(tenant.nemis_code) : null,
+      status: String(tenant.status) as PlatformInstitution['status'],
+      createdAt: new Date(tenant.created_at as Date | string).toISOString(),
+      settings: (tenant.settings as Record<string, unknown>) ?? {},
+      enrollment: {
+        students: Number(studentsResult.rows[0]?.total ?? 0),
+        teachers: Number(e?.teachers ?? 0),
+        parents: Number(e?.parents ?? 0),
+        schoolAdmins: Number(e?.school_admins ?? 0),
+        principals: Number(e?.principals ?? 0)
+      },
+      adminContacts: adminsResult.rows.map((r) => ({
+        id: String(r.id),
+        fullName: String(r.full_name),
+        email: String(r.email),
+        role: String(r.role),
+        joinedAt: new Date(r.created_at).toISOString()
+      })),
+      pendingAdminInvites: invitesResult.rows.map((r) => ({
+        id: String(r.id),
+        email: String(r.email),
+        role: String(r.role),
+        expiresAt: new Date(r.expires_at).toISOString(),
+        createdAt: new Date(r.created_at).toISOString()
+      })),
+      classStreams: streamsResult.rows.map((r) => ({
+        gradeLevel: String(r.grade_level),
+        academicYear: Number(r.academic_year),
+        streamNames: r.stream_names ?? [],
+        streamCount: Number(r.stream_count)
       }))
     };
   }
