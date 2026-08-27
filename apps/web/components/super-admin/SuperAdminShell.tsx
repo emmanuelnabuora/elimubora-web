@@ -23,6 +23,7 @@ import {
   WalletCards
 } from 'lucide-react';
 
+import { SaLogoutButton } from '../SaLogoutButton';
 import styles from './super-admin.module.css';
 
 const nav = [
@@ -80,6 +81,7 @@ export function SuperAdminShell({
           <span className={styles.avatar}>{initials(fullName)}</span>
           <span><strong>{fullName}</strong><small>Platform Administrator</small></span>
         </div>
+        <SaLogoutButton />
       </aside>
       <section className={styles.main}>
         <header className={styles.header}>
