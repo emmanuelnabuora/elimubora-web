@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiFetch } from '../../../../lib/api-client';
 import { KENYA_COUNTY_CODE_TO_NAME } from '../../../../lib/kenya-counties';
 import { SchoolApplicationReviewActions } from '../../../../components/super-admin/SchoolApplicationReviewActions';
+import { SchoolApplicationResendInvitation } from '../../../../components/super-admin/SchoolApplicationResendInvitation';
 
 interface ContactRow {
   role?: string;
@@ -137,6 +138,18 @@ export default async function SchoolApplicationDetailPage({ params }: { params: 
           <>
             <hr style={{ border: 'none', borderTop: '1px solid #e6e8f2' }} />
             <SchoolApplicationReviewActions applicationId={app.id} schoolName={app.schoolName} />
+          </>
+        )}
+
+        {app.status === 'approved' && (
+          <>
+            <hr style={{ border: 'none', borderTop: '1px solid #e6e8f2' }} />
+            <div>
+              <div style={{ fontSize: 12, color: '#98a2b3', marginBottom: 8 }}>
+                If {app.adminFullName}&rsquo;s invite link has expired or they never received it, send a new one.
+              </div>
+              <SchoolApplicationResendInvitation applicationId={app.id} adminFullName={app.adminFullName} />
+            </div>
           </>
         )}
       </div>
