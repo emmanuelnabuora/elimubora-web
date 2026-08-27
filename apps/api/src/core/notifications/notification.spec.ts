@@ -5,6 +5,10 @@ const baseConfig = {
   postmark: { apiToken: 'test-token', fromEmail: 'noreply@elimubora.co' }
 } as unknown as AppConfig;
 
+// Health-recording is best-effort and side-channel to what these tests assert
+// (the actual email send behavior), so a simple resolved-promise stub is enough.
+const dbMock = { query: jest.fn().mockResolvedValue({ rows: [] }) } as unknown as import('../database/database.service').DatabaseService;
+
 describe('PostmarkNotificationChannel', () => {
   const originalFetch = global.fetch;
 
@@ -17,7 +21,7 @@ describe('PostmarkNotificationChannel', () => {
     const fetchMock = jest.fn().mockResolvedValue({ ok: true, text: async () => '' });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const channel = new PostmarkNotificationChannel(baseConfig);
+    const channel = new PostmarkNotificationChannel(baseConfig, dbMock);
     await channel.deliver({
       to: { email: 'teacher@school.ke' },
       template: 'invitation',
@@ -41,7 +45,7 @@ describe('PostmarkNotificationChannel', () => {
     const fetchMock = jest.fn().mockResolvedValue({ ok: true, text: async () => '' });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const channel = new PostmarkNotificationChannel(baseConfig);
+    const channel = new PostmarkNotificationChannel(baseConfig, dbMock);
     await channel.deliver({
       to: { email: 'parent@example.ke' },
       template: 'password-reset',
@@ -57,7 +61,7 @@ describe('PostmarkNotificationChannel', () => {
     const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 422, text: async () => 'Invalid recipient' });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const channel = new PostmarkNotificationChannel(baseConfig);
+    const channel = new PostmarkNotificationChannel(baseConfig, dbMock);
     await expect(
       channel.deliver({ to: { email: 'bad@invalid' }, template: 'password-reset', data: { resetUrl: 'x' } })
     ).rejects.toThrow('Postmark delivery failed');
@@ -67,7 +71,7 @@ describe('PostmarkNotificationChannel', () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const channel = new PostmarkNotificationChannel(baseConfig);
+    const channel = new PostmarkNotificationChannel(baseConfig, dbMock);
     await channel.deliver({ to: { phone: '+254700000000' }, template: 'invitation', data: {} });
 
     expect(fetchMock).not.toHaveBeenCalled();

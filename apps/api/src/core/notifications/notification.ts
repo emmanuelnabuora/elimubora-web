@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../../config/configuration';
+import { DatabaseService } from '../database/database.service';
 
 export interface NotificationMessage {
   to: { email?: string; phone?: string };
@@ -160,7 +161,39 @@ function renderEmail(message: NotificationMessage): RenderedEmail {
 export class PostmarkNotificationChannel implements NotificationChannel {
   private readonly logger = new Logger('Notifications');
 
-  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+  constructor(
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly db: DatabaseService
+  ) {}
+
+  /**
+   * Keeps platform.integration_config's 'email' row honest so the
+   * super-admin Integrations page reflects real delivery health
+   * instead of the static 'not_configured' seed row it started with.
+   * Best-effort: a failure here is logged but never allowed to mask
+   * or replace the actual delivery outcome for the caller.
+   */
+  private async recordHealth(ok: boolean, latencyMs: number, errorCode?: string): Promise<void> {
+    try {
+      if (ok) {
+        await this.db.query(
+          `UPDATE platform.integration_config
+           SET status = 'healthy', enabled = true, last_success_at = now(), latency_ms = $1, updated_at = now()
+           WHERE code = 'email'`,
+          [latencyMs]
+        );
+      } else {
+        await this.db.query(
+          `UPDATE platform.integration_config
+           SET status = 'down', enabled = true, last_failure_at = now(), last_error_code = $1, latency_ms = $2, updated_at = now()
+           WHERE code = 'email'`,
+          [errorCode ?? null, latencyMs]
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to record integration health for email: ${(err as Error).message}`);
+    }
+  }
 
   async deliver(message: NotificationMessage): Promise<void> {
     const to = message.to.email;
@@ -169,6 +202,7 @@ export class PostmarkNotificationChannel implements NotificationChannel {
       return;
     }
     const { subject, textBody, htmlBody } = renderEmail(message);
+    const startedAt = Date.now();
     const res = await fetch('https://api.postmarkapp.com/email', {
       method: 'POST',
       headers: {
@@ -185,10 +219,13 @@ export class PostmarkNotificationChannel implements NotificationChannel {
         MessageStream: 'outbound'
       })
     });
+    const latencyMs = Date.now() - startedAt;
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       this.logger.error(`Postmark delivery failed for template=${message.template} to=${to}: ${res.status} ${body}`);
+      await this.recordHealth(false, latencyMs, String(res.status));
       throw new Error(`Postmark delivery failed (${res.status})`);
     }
+    await this.recordHealth(true, latencyMs);
   }
 }

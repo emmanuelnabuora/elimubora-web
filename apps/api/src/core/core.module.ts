@@ -66,11 +66,11 @@ import { TenantProvisioningService } from './tenancy/tenant-provisioning.service
     { provide: EVENT_PUBLISHER, useClass: InProcessEventPublisher },
     {
       provide: NOTIFICATION_CHANNEL,
-      useFactory: (config: ReturnType<typeof loadConfig>) =>
+      useFactory: (config: ReturnType<typeof loadConfig>, db: DatabaseService) =>
         config.postmark?.apiToken && config.postmark?.fromEmail
-          ? new PostmarkNotificationChannel(config)
+          ? new PostmarkNotificationChannel(config, db)
           : new DevLogNotificationChannel(),
-      inject: [APP_CONFIG]
+      inject: [APP_CONFIG, DatabaseService]
     },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     TenantProvisioningService,
