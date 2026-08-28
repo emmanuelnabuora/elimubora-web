@@ -25,6 +25,7 @@ export interface AuthTokens {
 export type LoginResult =
   | { kind: 'authenticated'; tokens: AuthTokens; memberships: MembershipRecord[] }
   | { kind: 'mfa_required'; mfaToken: string }
+  | { kind: 'mfa_setup_required'; mfaToken: string }
   | { kind: 'select_institution'; memberships: MembershipRecord[] };
 
 /**
@@ -89,6 +90,23 @@ export class AuthService {
         role: membership.role
       });
       return { kind: 'mfa_required', mfaToken };
+    }
+
+    // Super-admin access is high-privilege enough (cross-tenant read,
+    // institution status/deletion, security alerts) that a password
+    // alone shouldn't be sufficient — but a hard block on login would
+    // strand any platform_admin who hasn't enrolled yet. Instead,
+    // password verification succeeds and the account is routed into
+    // mandatory TOTP setup (below) before a real session is ever
+    // issued, reusing the same challenge-token mechanism as
+    // mfa_required so no separate token type is needed.
+    if (membership.role === 'platform_admin') {
+      const mfaToken = await this.tokens.signMfaChallenge({
+        userId: user.id,
+        tenantId: membership.tenantId,
+        role: membership.role
+      });
+      return { kind: 'mfa_setup_required', mfaToken };
     }
 
     const tokens = await this.issueSession(user.id, membership);
@@ -176,6 +194,54 @@ export class AuthService {
       throw new UnauthorizedException('Invalid code');
     }
     await this.repo.enableTotp(user.id);
+  }
+
+  /**
+   * Mandatory-setup counterparts to startTotpEnrollment/
+   * confirmTotpEnrollment above, for a platform_admin who hasn't
+   * enrolled yet. These take the mfa_setup_required challenge token
+   * instead of an authenticated session (there isn't one yet — that's
+   * the whole point), so someone can prove password possession and
+   * complete enrollment without ever holding a real access token
+   * beforehand. Rejects outright if TOTP is already enabled, so a
+   * captured setup token can't be replayed to re-enroll and silently
+   * swap out an existing admin's authenticator.
+   */
+  async startForcedTotpEnrollment(mfaToken: string): Promise<{ otpauthUrl: string }> {
+    let claims;
+    try {
+      claims = await this.tokens.verify(mfaToken, 'mfa');
+    } catch {
+      throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+    }
+    const user = await this.requireUser(claims.sub);
+    if (user.totpEnabled) {
+      throw new UnauthorizedException('MFA is already enabled for this account.');
+    }
+    const { secret, otpauthUrl } = this.totp.generateSecret();
+    await this.repo.setTotpSecret(user.id, this.totp.encrypt(secret));
+    return { otpauthUrl: otpauthUrl(user.email) };
+  }
+
+  async confirmForcedTotpEnrollment(mfaToken: string, code: string): Promise<AuthTokens> {
+    let claims;
+    try {
+      claims = await this.tokens.verify(mfaToken, 'mfa');
+    } catch {
+      throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+    }
+    const user = await this.requireUser(claims.sub);
+    if (user.totpEnabled) {
+      throw new UnauthorizedException('MFA is already enabled for this account.');
+    }
+    if (!user.totpSecretEnc) {
+      throw new UnauthorizedException('No enrollment in progress. Please start setup again.');
+    }
+    if (!this.totp.check(code, this.totp.decrypt(user.totpSecretEnc))) {
+      throw new UnauthorizedException('Invalid code');
+    }
+    await this.repo.enableTotp(user.id);
+    return this.issueSession(user.id, { tenantId: claims.ten, role: claims.rol });
   }
 
   private async issueSession(

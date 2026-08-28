@@ -35,7 +35,7 @@ function membershipRoleToSlug(role: string): string {
   }
 }
 
-type Stage = 'credentials' | 'mfa' | 'select_institution' | 'role_mismatch';
+type Stage = 'credentials' | 'mfa' | 'mfa_setup' | 'select_institution' | 'role_mismatch';
 
 /** Excludes `icon` (a component reference) — functions can't cross the
  *  server-to-client-component boundary, and this form never renders it anyway. */
@@ -51,6 +51,8 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [socialNote, setSocialNote] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [setupOtpauthUrl, setSetupOtpauthUrl] = useState<string | null>(null);
+  const [setupCode, setSetupCode] = useState('');
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [actualRoleSlugs, setActualRoleSlugs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,26 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         setStage('mfa');
         return;
       }
+      if (data.status === 'mfa_setup_required') {
+        setMfaToken(data.mfaToken);
+        setStage('mfa_setup');
+        try {
+          const enrollRes = await fetch('/api/auth/mfa/setup/enroll', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ mfaToken: data.mfaToken })
+          });
+          const enrollData = await enrollRes.json();
+          if (!enrollRes.ok) {
+            setError(enrollData.message ?? 'Could not start MFA setup.');
+            return;
+          }
+          setSetupOtpauthUrl(enrollData.otpauthUrl);
+        } catch {
+          setError('Could not reach the server. Check your connection and try again.');
+        }
+        return;
+      }
       if (data.status === 'select_institution') {
         setMemberships(data.memberships);
         setStage('select_institution');
@@ -119,6 +141,30 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ mfaToken, code: mfaCode })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message ?? 'Incorrect code. Try again.');
+        return;
+      }
+      router.push('/dashboard');
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMfaSetupSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!mfaToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/mfa/setup/confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mfaToken, code: setupCode })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -185,6 +231,55 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
         </div>
         {error && <p className="auth-error">{error}</p>}
       </div>
+    );
+  }
+
+  if (stage === 'mfa_setup') {
+    return (
+      <form
+        className={cardClass}
+        onSubmit={handleMfaSetupSubmit}
+        style={{ ['--door-accent' as string]: role.accent }}
+      >
+        <h2 className="auth-step-label">Set up two-factor authentication</h2>
+        <p className="auth-desc">
+          Administrator accounts require two-factor authentication. Add this account to your authenticator
+          app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it generates.
+        </p>
+        {setupOtpauthUrl ? (
+          <div
+            style={{
+              padding: 'var(--eb-space-3)',
+              borderRadius: 8,
+              background: 'var(--eb-surface-muted, #f6f7fc)',
+              wordBreak: 'break-all',
+              fontSize: 12,
+              fontFamily: 'monospace'
+            }}
+          >
+            {setupOtpauthUrl}
+          </div>
+        ) : (
+          <p className="auth-desc">Preparing your setup key…</p>
+        )}
+        <label className="auth-field">
+          <span>Verification code</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="\d{6}"
+            maxLength={6}
+            value={setupCode}
+            onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))}
+            required
+            autoFocus
+          />
+        </label>
+        {error && <p className="auth-error">{error}</p>}
+        <button type="submit" className="auth-submit" disabled={loading || setupCode.length !== 6 || !setupOtpauthUrl}>
+          {loading ? 'Verifying…' : 'Confirm and sign in'}
+        </button>
+      </form>
     );
   }
 

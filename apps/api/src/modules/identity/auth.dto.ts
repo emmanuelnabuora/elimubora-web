@@ -20,6 +20,15 @@ export type MfaVerifyDto = z.infer<typeof mfaVerifySchema>;
 export const totpConfirmSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
 export type TotpConfirmDto = z.infer<typeof totpConfirmSchema>;
 
+export const mfaSetupEnrollSchema = z.object({ mfaToken: z.string().min(20) });
+export type MfaSetupEnrollDto = z.infer<typeof mfaSetupEnrollSchema>;
+
+export const mfaSetupConfirmSchema = z.object({
+  mfaToken: z.string().min(20),
+  code: z.string().regex(/^\d{6}$/)
+});
+export type MfaSetupConfirmDto = z.infer<typeof mfaSetupConfirmSchema>;
+
 export const registerSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(2).max(200),

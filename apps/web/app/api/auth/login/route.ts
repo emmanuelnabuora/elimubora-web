@@ -62,6 +62,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (data.kind === 'mfa_required') {
     return NextResponse.json({ status: 'mfa_required', mfaToken: data.mfaToken });
   }
+  if (data.kind === 'mfa_setup_required') {
+    return NextResponse.json({ status: 'mfa_setup_required', mfaToken: data.mfaToken });
+  }
 
   if (data.kind === 'select_institution') {
     return NextResponse.json({ status: 'select_institution', memberships: data.memberships });

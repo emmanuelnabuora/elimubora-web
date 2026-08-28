@@ -12,11 +12,15 @@ import { APP_CONFIG, type AppConfig } from '../../config/configuration';
 import { CurrentUser, Public } from './auth.decorators';
 import {
   loginSchema,
+  mfaSetupConfirmSchema,
+  mfaSetupEnrollSchema,
   mfaVerifySchema,
   refreshSchema,
   registerSchema,
   totpConfirmSchema,
   type LoginDto,
+  type MfaSetupConfirmDto,
+  type MfaSetupEnrollDto,
   type MfaVerifyDto,
   type RefreshDto,
   type RegisterDto,
@@ -68,6 +72,26 @@ export class AuthController {
   @HttpCode(200)
   verifyMfa(@Body(new ZodValidationPipe(mfaVerifySchema)) dto: MfaVerifyDto) {
     return this.auth.verifyMfa(dto);
+  }
+
+  // Mandatory-setup counterparts for a platform_admin who hasn't
+  // enrolled in TOTP yet — see AuthService.login's mfa_setup_required
+  // branch. @Public() because there's no session yet by design; the
+  // mfaToken in the body is what proves password possession instead.
+  @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
+  @Post('mfa/setup/enroll')
+  @HttpCode(200)
+  startMfaSetup(@Body(new ZodValidationPipe(mfaSetupEnrollSchema)) dto: MfaSetupEnrollDto) {
+    return this.auth.startForcedTotpEnrollment(dto.mfaToken);
+  }
+
+  @Public()
+  @Throttle(STRICT_AUTH_THROTTLE)
+  @Post('mfa/setup/confirm')
+  @HttpCode(200)
+  confirmMfaSetup(@Body(new ZodValidationPipe(mfaSetupConfirmSchema)) dto: MfaSetupConfirmDto) {
+    return this.auth.confirmForcedTotpEnrollment(dto.mfaToken, dto.code);
   }
 
   @Public()

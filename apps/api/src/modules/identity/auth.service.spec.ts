@@ -244,3 +244,84 @@ describe('AuthService', () => {
     expect(claims).toMatchObject({ ten: 'ten-2', rol: 'principal' });
   });
 });
+
+describe('AuthService — mandatory MFA for platform_admin', () => {
+  const passwords = new PasswordService();
+  const tokens = new TokenService(config);
+  const totp = new TotpService(config);
+  let repo: FakeRepo;
+  let service: AuthService;
+
+  const adminMembership: MembershipRecord = {
+    tenantId: 'ten-platform',
+    tenantSlug: 'platform',
+    tenantName: 'ElimuBora Platform',
+    role: 'platform_admin'
+  };
+
+  beforeEach(async () => {
+    repo = new FakeRepo(
+      {
+        id: 'admin-1',
+        email: 'admin@elimubora.co',
+        fullName: 'Platform Admin',
+        passwordHash: await passwords.hash('Sound-Password-123'),
+        status: 'active',
+        failedAttempts: 0,
+        lockedUntil: null,
+        totpSecretEnc: null,
+        totpEnabled: false
+      },
+      [adminMembership]
+    );
+    service = new AuthService(config, repo as unknown as IdentityRepository, passwords, tokens, totp);
+  });
+
+  it('never returns authenticated for a platform_admin without TOTP enabled', async () => {
+    const result = await service.login({ email: 'admin@elimubora.co', password: 'Sound-Password-123' });
+    expect(result.kind).toBe('mfa_setup_required');
+  });
+
+  it('completes forced enrollment end-to-end and receives a real session', async () => {
+    const login = await service.login({ email: 'admin@elimubora.co', password: 'Sound-Password-123' });
+    if (login.kind !== 'mfa_setup_required') throw new Error('expected mfa_setup_required');
+
+    const { otpauthUrl } = await service.startForcedTotpEnrollment(login.mfaToken);
+    expect(otpauthUrl).toContain('admin%40elimubora.co');
+
+    const secret = totp.decrypt(repo.user.totpSecretEnc!);
+    const { authenticator } = await import('otplib');
+    const tokensOut = await service.confirmForcedTotpEnrollment(login.mfaToken, authenticator.generate(secret));
+
+    const claims = await tokens.verify(tokensOut.accessToken, 'access');
+    expect(claims).toMatchObject({ sub: 'admin-1', ten: 'ten-platform', rol: 'platform_admin' });
+    expect(repo.user.totpEnabled).toBe(true);
+
+    const nextLogin = await service.login({ email: 'admin@elimubora.co', password: 'Sound-Password-123' });
+    expect(nextLogin.kind).toBe('mfa_required');
+  });
+
+  it('rejects a wrong code during forced enrollment confirmation', async () => {
+    const login = await service.login({ email: 'admin@elimubora.co', password: 'Sound-Password-123' });
+    if (login.kind !== 'mfa_setup_required') throw new Error('expected mfa_setup_required');
+    await service.startForcedTotpEnrollment(login.mfaToken);
+    await expect(
+      service.confirmForcedTotpEnrollment(login.mfaToken, '000000')
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(repo.user.totpEnabled).toBe(false);
+  });
+
+  it('refuses to re-enroll once TOTP is already enabled', async () => {
+    const login = await service.login({ email: 'admin@elimubora.co', password: 'Sound-Password-123' });
+    if (login.kind !== 'mfa_setup_required') throw new Error('expected mfa_setup_required');
+    await service.startForcedTotpEnrollment(login.mfaToken);
+    const secret = totp.decrypt(repo.user.totpSecretEnc!);
+    const { authenticator } = await import('otplib');
+    await service.confirmForcedTotpEnrollment(login.mfaToken, authenticator.generate(secret));
+
+    await expect(service.startForcedTotpEnrollment(login.mfaToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.confirmForcedTotpEnrollment(login.mfaToken, authenticator.generate(secret))
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
