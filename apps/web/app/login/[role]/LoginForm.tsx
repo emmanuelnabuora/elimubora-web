@@ -52,6 +52,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [setupOtpauthUrl, setSetupOtpauthUrl] = useState<string | null>(null);
+  const [setupQrDataUrl, setSetupQrDataUrl] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState('');
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [actualRoleSlugs, setActualRoleSlugs] = useState<string[]>([]);
@@ -109,6 +110,7 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
             return;
           }
           setSetupOtpauthUrl(enrollData.otpauthUrl);
+          setSetupQrDataUrl(enrollData.qrDataUrl ?? null);
         } catch {
           setError('Could not reach the server. Check your connection and try again.');
         }
@@ -247,18 +249,38 @@ export function LoginForm({ role, embedded = false }: { role: LoginFormRole; emb
           app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it generates.
         </p>
         {setupOtpauthUrl ? (
-          <div
-            style={{
-              padding: 'var(--eb-space-3)',
-              borderRadius: 8,
-              background: 'var(--eb-surface-muted, #f6f7fc)',
-              wordBreak: 'break-all',
-              fontSize: 12,
-              fontFamily: 'monospace'
-            }}
-          >
-            {setupOtpauthUrl}
-          </div>
+          <>
+            {setupQrDataUrl && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL, not an external image */}
+                <img
+                  src={setupQrDataUrl}
+                  alt="Scan this QR code with your authenticator app"
+                  width={200}
+                  height={200}
+                  style={{ borderRadius: 8, border: '1px solid var(--eb-line, #e6e8f2)' }}
+                />
+              </div>
+            )}
+            <details>
+              <summary style={{ fontSize: 12, color: 'var(--eb-fg-muted, #6b7285)', cursor: 'pointer' }}>
+                Can&rsquo;t scan? Enter the key manually
+              </summary>
+              <div
+                style={{
+                  marginTop: 6,
+                  padding: 'var(--eb-space-3)',
+                  borderRadius: 8,
+                  background: 'var(--eb-surface-muted, #f6f7fc)',
+                  wordBreak: 'break-all',
+                  fontSize: 12,
+                  fontFamily: 'monospace'
+                }}
+              >
+                {setupOtpauthUrl}
+              </div>
+            </details>
+          </>
         ) : (
           <p className="auth-desc">Preparing your setup key…</p>
         )}

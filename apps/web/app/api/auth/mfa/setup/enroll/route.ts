@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import QRCode from 'qrcode';
 import { API_BASE_URL } from '../../../../../../lib/auth-cookies';
 
 /** Proxies POST /v1/auth/mfa/setup/enroll — starts mandatory TOTP setup for a platform_admin. */
@@ -32,6 +33,20 @@ export async function POST(request: Request): Promise<NextResponse> {
       { message: 'The authentication service returned an unexpected response.' },
       { status: 502 }
     );
+  }
+  // The backend only returns the raw otpauthUrl -- rendering it as a
+  // scannable QR code is purely a display concern, so it happens here
+  // in the frontend proxy rather than adding an image-generation
+  // dependency to the API. Best-effort: if QR generation fails for any
+  // reason, the setup flow still works via the text otpauthUrl the
+  // frontend already falls back to for manual entry.
+  if (upstream.ok && typeof data.otpauthUrl === 'string') {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(data.otpauthUrl, { margin: 1, width: 240 });
+      return NextResponse.json({ ...data, qrDataUrl }, { status: upstream.status });
+    } catch (err) {
+      console.error('MFA setup enroll route: QR code generation failed', err);
+    }
   }
   return NextResponse.json(data, { status: upstream.status });
 }
