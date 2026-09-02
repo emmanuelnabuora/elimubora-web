@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { ACCESS_COOKIE, API_BASE_URL, REFRESH_COOKIE } from './auth-cookies';
 
@@ -20,7 +21,7 @@ export class ApiError extends Error {
  * reason: the next request through a Route Handler will refresh again
  * if needed, with no user-visible effect beyond an extra request.
  */
-async function resolveAccessToken(): Promise<string | null> {
+const resolveAccessToken = cache(async (): Promise<string | null> => {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
   if (accessToken) return accessToken;
@@ -37,7 +38,7 @@ async function resolveAccessToken(): Promise<string | null> {
   if (!res.ok) return null;
   const data = await res.json();
   return data.accessToken as string;
-}
+});
 
 /**
  * Server-only authenticated call against the real NestJS API, using

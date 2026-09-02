@@ -138,12 +138,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     if (stored.revokedAt) {
-      // Reuse of a rotated token — assume theft, kill the session family.
-      await this.repo.revokeFamily(stored.familyId);
+      const reuseAgeMs = Date.now() - stored.revokedAt.getTime();
+      const graceMs = 10_000; // covers concurrent requests racing on rotation, not real replay
+      if (reuseAgeMs > graceMs) {
+        // Reuse of a rotated token well after rotation — assume theft, kill the session family.
+        await this.repo.revokeFamily(stored.familyId);
+        this.logger.warn(
+          `Refresh token reuse detected for user ${stored.userId}; family ${stored.familyId} revoked`
+        );
+        throw new UnauthorizedException('Session revoked');
+      }
+      // Within the grace window: most likely a concurrent request that
+      // read this token just before another request rotated it. Fail
+      // this one request without punishing the rest of the session.
       this.logger.warn(
-        `Refresh token reuse detected for user ${stored.userId}; family ${stored.familyId} revoked`
+        `Refresh token reuse within grace window for user ${stored.userId}; not revoking family`
       );
-      throw new UnauthorizedException('Session revoked');
+      throw new UnauthorizedException('Invalid refresh token');
     }
     if (stored.expiresAt.getTime() <= Date.now()) {
       throw new UnauthorizedException('Session expired');
